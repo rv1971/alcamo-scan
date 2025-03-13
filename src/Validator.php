@@ -6,7 +6,14 @@ class Validator
 {
     public const FORMATS = [ 'jpeg', 'png', 'pnm', 'tiff' ];
 
+    public const MODES = [ 'color', 'gray', 'binary' ];
+
     public const TYPES = [ 'image', 'text' ];
+
+    public static function validateBatch($value): bool
+    {
+        return is_numeric($value) && $value > 0 && $value < 100;
+    }
 
     public static function validateFormat($value): bool
     {
@@ -15,12 +22,17 @@ class Validator
 
     public static function validateGeometry($value): bool
     {
-        return preg_match('\d+x\d+(\+\d+\+\d+)?|a[456]r?', $value);
+        return preg_match('/\d+x\d+(\+\d+\+\d+)?|a[456]r?/', $value);
     }
 
     public static function validateLanguage($value): bool
     {
         return preg_match('[a-z][a-z]', $value);
+    }
+
+    public static function validateMode($value): bool
+    {
+        return in_array($value, static::MODES);
     }
 
     public static function validateResolution($value): bool
