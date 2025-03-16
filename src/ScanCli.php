@@ -3,40 +3,12 @@
 namespace alcamo\scan;
 
 use alcamo\cli\AbstractCli;
-use alcamo\exception\ProcessFailed;
 use alcamo\rdfa\RdfaData;
 use GetOpt\{ArgumentException, GetOpt, Operand};
 
 class ScanCli extends AbstractCli
 {
     public const DEFAULT_FORMAT = 'jpeg';
-
-    public const DEFAULT_GEOMETRY = 'a4';
-
-    public const DEFAULT_MODE = 'color';
-
-    public const DEFAULT_RESOLUTION = 150;
-
-    public const GEOMETRY_MAP = [
-        'a4'  => [ 210, 297 ],
-	'a5'  => [ 148, 210 ],
-	'a5r' => [ 210, 148 ],
-	'a6'  => [ 105, 148 ],
-	'a6r' => [ 148, 105 ]
-    ];
-
-    public const MODE_MAP = [
-        'epkowa' => [
-            'color'  => 'Color',
-            'gray'   => 'Gray',
-            'binary' => 'Binary'
-        ],
-        '*' => [
-            'color'  => 'Color',
-            'gray'   => 'Gray',
-            'binary' => 'Lineart'
-        ]
-    ];
 
     public const OPTIONS =
         [
@@ -71,7 +43,7 @@ class ScanCli extends AbstractCli
             'date' => [
                 'd',
                 GetOpt::REQUIRED_ARGUMENT,
-                'Dublin core created values.',
+                'Dublin core date values.',
                 'comma-separated'
             ],
             'device' => [
@@ -79,6 +51,11 @@ class ScanCli extends AbstractCli
                 GetOpt::REQUIRED_ARGUMENT,
                 'Scanner to use.',
                 'sane-device'
+            ],
+            'even' => [
+                null,
+                GetOpt::NO_ARGUMENT,
+                'Only do scan of even pages.'
             ],
             'format' => [
                 'f',
@@ -104,13 +81,28 @@ class ScanCli extends AbstractCli
             'mode' => [
                 null,
                 GetOpt::REQUIRED_ARGUMENT,
-                'Scan mode: color|gray|binary. [' . self::DEFAULT_MODE . ']',
+                'Scan mode: color|gray|binary. [' . Scanner::DEFAULT_MODE . ']',
                 'mode',
                 Validator::class . '::validateMode'
             ],
+            'no-remove-raw-files' => [
+                null,
+                GetOpt::NO_ARGUMENT,
+                'Do not remove raw files.'
+            ],
+            'odd' => [
+                null,
+                GetOpt::NO_ARGUMENT,
+                'Only do scan of odd pages.'
+            ],
+            'pdf' => [
+                null,
+                GetOpt::NO_ARGUMENT,
+                'Create PDF output.'
+            ],
             'process-only' => [
                 null,
-                GetOpt::MULTIPLE_ARGUMENT,
+                GetOpt::NO_ARGUMENT,
                 'Only process existing files.'
             ],
             'publisher' => [
@@ -121,7 +113,7 @@ class ScanCli extends AbstractCli
             'resolution' => [
                 'r',
                 GetOpt::REQUIRED_ARGUMENT,
-                'Resolution. [' . self::DEFAULT_RESOLUTION . ']',
+                'Resolution. [' . Scanner::DEFAULT_RESOLUTION . ']',
                 'dpi',
                 Validator::class . '::validateResolution'
             ],
@@ -130,10 +122,10 @@ class ScanCli extends AbstractCli
                 GetOpt::NO_ARGUMENT,
                 'Rotate 90° clockwise.'
             ],
-            'raw-scan-only' => [
+            'scan-only' => [
                 null,
                 GetOpt::NO_ARGUMENT,
-                'Only execute raw scan.'
+                'Only do raw scan.'
             ],
             'title' => [
                 't',
@@ -151,203 +143,134 @@ class ScanCli extends AbstractCli
         ]
         + parent::OPTIONS;
 
-    private $device_;        ///< string
-    private $backend_;       ///< string
-    private $scanFormat_;    ///< string
-    private $filenamePrefix_ ///< string
-    private $dates_;         ///< array
-    private $titles_;        ///< array
-    private $coverages_;     ///< array
+    public const OPERANDS = [
+        'file' => Operand::MULTIPLE
+    ];
 
     public function innerRun(): int
     {
-        if (!$this->getOption('title') && !$this->getOption('raw-scan-only')) {
+        $scanOnly = $this->getOption('scan-only')
+            || $this->getOption('even') || $this->getOption('odd');
+
+        if (!$this->getOption('title') && !$scanOnly) {
             throw new ArgumentException(
-                'Either --title or --raw-scan-only must be given'
+                'One of --title, --odd, --even, --scan-only must be given'
             );
         }
 
-        $this->device_ =
-            $this->getOption('device') ?? getenv('SANE_DEFAULT_DEVICE');
-
-        if ($this->device_ === false) {
-            $this->device_ = null;
+        if ($scanOnly) {
+            if (count($this->getOperand('file')) > 1) {
+                throw new ArgumentException(
+                    'In scan-only mode at most one filename prefix can be '
+                    . 'given as an operand'
+                );
+            }
+        } elseif (!$this->getOption('process-only')) {
+            if (count($this->getOperand('file'))) {
+                throw new ArgumentException(
+                    'No filename operands can be given in combined mode'
+                );
+            }
         }
 
-        $this->backend_ = explode(':', $this->device_, 2)[0];
+        $batchSize = $this->getOption('batch');
 
-        $this->batchSize_ = (int)$this->getOption('batch');
+        $filenamePrefix = $scanOnly && $this->getOperand('file')
+            ? $this->getOperand('file')[0]
+            : 'scan.' . date('Ydm');
 
-        $this->scanFormat_ = $this->getOption('format') ?? self::DEFAULT_FORMAT;
+        $format = $this->getOption('format') ?? self::DEFAULT_FORMAT;
 
-        $this->filenamePrefix_ = 'scan.' . date('Ydm\THis');
-
-        $this->dates_ = $this->getOption('date')
+        $dates = $this->getOption('date')
             ? explode(',', $this->getOption('date'))
             : [ null ];
 
-        $this->titles_ = explode(',', $this->getOption('title'));
+        $titles = explode(',', $this->getOption('title'));
 
-        $this->coverages_ = $this->getOption('coverage')
+        $coverages = $this->getOption('coverage')
             ? explode(',', $this->getOption('coverage'))
             : [ null ];
 
-        if (!$this->getOption('process-only')) {
-            $this->scanPages();
+        if (!isset($batchSize)) {
+            if (count($dates) > 1) {
+                throw new ArgumentException(
+                    '--batch-size must be given with multiple dates'
+                );
+            }
+
+            if (count($titles) > 1) {
+                throw new ArgumentException(
+                    '--batch-size must be given with multiple titles'
+                );
+            }
+
+            if (count($coverages) > 1) {
+                throw new ArgumentException(
+                    '--batch-size must be given with multiple coverages'
+                );
+            }
         }
 
-        if (!$this->getOption('raw-scan-only')) {
-            $this->processImageFiles();
+        $totalPageCount = isset($batchSize)
+            ? (count($dates) * count($titles) * count($coverages) * $batchSize)
+            : null;
+
+        if (!$this->getOption('process-only')) {
+            $scanner = new Scanner(
+                (bool)$this->getOption('adf'),
+                $this->getOption('batch-start'),
+                $this->getOption('device'),
+                $filenamePrefix,
+                $format,
+                $this->getOption('geometry'),
+                $this->getOption('mode'),
+                $this->getProgressReporter(),
+                $this->getOption('resolution'),
+                ($this->getOption('odd')
+                 ? 1
+                 : ($this->getOption('even') ? 2 : null)),
+                $totalPageCount
+            );
+
+            $scanner->run();
+        }
+
+        if (!$scanOnly) {
+            $filenames = $this->getOperand('file')
+                ?: glob("$filenamePrefix.[0-9][0-9].$format", GLOB_ERR);
+
+            $processor = new Processor(
+                RdfaData::newFromIterable(
+                    [
+                        'dc:audience'  => $this->getOption('audience'),
+                        'dc:creator'   => $this->getOption('creator'),
+                        'dc:language'  => $this->getOption('language'),
+                        'dc:publisher' => $this->getOption('publisher'),
+                        'dc:type'      => $this->getOption('type')
+                    ]
+                ),
+                $dates,
+                $titles,
+                $coverages,
+                $batchSize,
+                $filenames,
+                $this->getOption('pdf'),
+                $this->getProgressReporter()
+            );
+
+            $processor->run();
+
+
+            if (
+                !$this->getOption('process-only')
+                && !$this->getOption('no-remove-raw-files')
+            ) {
+                foreach ($filenames as $filename) {
+                    unlink($filename);
+                }
+            }
         }
 
         return 0;
-    }
-
-    protected function createBasename(RdfaData $rdfaData): string
-    {
-        $props = [];
-
-        foreach (
-            [
-                'dc:publisher',
-                'dc:created',
-                'dc:audience',
-                'dc:title',
-                'dc:coverage'
-            ] as $propCurie
-        ) {
-            if ($rdfaData[$propCurie]) {
-                switch ($propCurie) {
-                    case 'dc:created':
-                        $props[] = $this->rdfaData_[$propCurie]
-                            ->format('Y-m-d');
-                        break;
-
-                    default:
-                        $props[] = $this->rdfaData_[$propCurie];
-                }
-            }
-        }
-
-        return implode('.', $props);
-    }
-
-    private function scanPages(): void
-    {
-        $geometryString =
-            $this->getOption('geometry') ?? self::DEFAULT_GEOMETRY;
-
-        if (ctype_digit($geometryString[0])) {
-            $geometry = preg_split('[x\+]', $geometryString);
-        } else {
-            $geometry = self::GEOMETRY_MAP[$geometryString];
-        }
-
-        $mode = $this->getOption('mode') ?? self::DEFAULT_MODE;
-
-        $backendMode = isset(self::MODE_MAP[$this->backend_])
-            ? self::MODE_MAP[$this->backend_][$mode]
-            : self::MODE_MAP['*'][$mode];
-
-        $totalPageCount = isset($this->batchSize_)
-            ? (count($this->dates_)
-               * count($this->titles_)
-               * count($this->coverages_)
-               * $this->batchSize_)
-            : null;
-
-        $filenameFormat = "{$this->filenamePrefix_}.%.2d.{$this->scanFormat_}";
-
-        $cmdLine = "scanimage "
-            . "--format={$this->scanFormat_} "
-            . "--batch=$filenameFormat "
-            . '-p '
-            . "--mode=$backendMode ";
-
-        if (isset($this->device_)) {
-            $cmdLine .= "-device-name=$this->device_ ";
-        }
-
-        if ($this->getOption('batch')) {
-            $cmdLine .= "--batch-count=$totalPageCount ";
-        }
-
-        $cmdLine .= "-x {$geometry[0]} -y {$geometry[1]} ";
-
-        if (isset($geometry[2])) {
-            $cmdLine .= "-l {$geometry[2]} -t {$geometry[3]} ";
-        }
-
-        $resolution = $this->getOption('resolution')
-            ?? self::DEFAULT_RESOLUTION;
-
-        switch ($this->backend_) {
-            case 'epkowa':
-                $cmdLine .=
-                    "--x-resolution=$resolution --y-resolution=$resolution ";
-                break;
-
-            default:
-                $cmdLine .= "--resolution=$resolution ";
-        }
-
-        if ($this->getOption('adf')) {
-            $cmdLine .= "--source='Automatic Document Feeder' ";
-        } else {
-            $cmdLine .= "--batch-prompt ";
-        }
-
-        $this->getProgressReporter()->write($cmdLine, 1);
-
-        if (passthru($cmdLine, $exitCode) === false) {
-            throw (new ProcessFailed())->setMessageContext(
-                [ 'command' => $cmdLine ]
-            );
-        }
-
-        if ($exitCode) {
-            throw (new ProcessFailed())->setMessageContext(
-                [ 'command' => $cmdLine ]
-            );
-        }
-    }
-
-    private function processImageFiles(): void
-    {
-        $files = $this->getOption('process-only')
-            ?: glob("{$this->filenamePrefix_}.[0-9][0-9].{$this->scanFormat_}");
-
-        $fixedRdfaData = RdfaData::newFromIterable(
-            [
-                'dc:audience'  => $this->getOption('audience'),
-                'dc:creator'   => $this->getOption('creator'),
-                'dc:language'  => $this->getOption('language'),
-                'dc:publisher' => $this->getOption('publisher'),
-                'dc:type'      => $this->getOption('type')
-            ]
-        );
-
-        $pageNo = 1;
-        foreach ($this->dates_ as $date) {
-            foreach ($this->titles_ as $title) {
-                foreach ($this->coverages_ as $coverage) {
-                    $rdfaData = $fixedRdfaData->replace(
-                        RdfaData::newFromIterable(
-                            [
-                                'dc:coverage' => $coverage,
-                                'dc:created' => $date,
-                                'dc:title' => $title
-                            ]
-                        )
-                    );
-
-                    $basename = $this->createBasename($rdfaData);
-
-                    echo "$basename\n";
-
-                    $pageNo++;
-                }
-            }
-        }
     }
 }
