@@ -16,8 +16,6 @@ class Processor
         'dc:coverage'
     ];
 
-    public const DEFAULT_QUALITY = 80;
-
     protected const EXIFTOOL_MAP = [
         'dc:coverage'  => 'Coverage',
         'dc:creator'   => 'Creator',
@@ -28,12 +26,15 @@ class Processor
         'dc:type'      => 'Type'
     ];
 
+    private const BACKGROUND = '#00000000';
+
     private $fixedRdfaData_;    ///< RdfaData
     private $dates_;            ///< array
     private $titles_;           ///< array
     private $coverages_;        ///< array
     private $batchSize_;        ///< array
     private $filenames_;        ///< array
+    private $rotateDegrees_;    ///< ?int
     private $createPdf_;        ///< bool
     private $progressReporter_; ///< ProgressReporter
 
@@ -44,6 +45,7 @@ class Processor
         array $coverages,
         ?int $batchSize,
         array $filenames,
+        ?int $rotateDegrees,
         bool $createPdf,
         ProgressReporter $progressReporter
     ) {
@@ -58,6 +60,8 @@ class Processor
         $this->batchSize_ = $batchSize;
 
         $this->filenames_ = $filenames;
+
+        $this->rotateDegrees_ = $rotateDegrees;
 
         $this->createPdf_ = $createPdf;
 
@@ -146,46 +150,67 @@ class Processor
     private function processBatch(RdfaData $rdfaData, array $filenames): void
     {
         if ($this->createPdf_) {
+            $tmpname = tempnam(getcwd(), 'scan.process.') . '.pdf';
+
             $images = new \Imagick($filenames);
 
-            /* @todo use OutputProcess to send the result of
-             * $images->writeImages('pdf:-', true) to the xiftool process */
+            if (isset($this->rotateDegrees_)) {
+                foreach ($images as $image) {
+                    $image->rotateImage(self::BACKGROUND, $this->rotateDegrees_);
+                }
+            }
+
+            if (!$images->writeImages($tmpname, true)) {
+                throw new \RuntimeException('Imagick failed to create PDF');
+            }
+
+            $this->runExiftool(
+                $rdfaData,
+                $tmpname,
+                $this->createBasename($rdfaData) . '.pdf'
+            );
+
+            unlink($tmpname);
         } else {
             $fileCount = count($filenames);
 
             $filenameFormat = $this->createBasename($rdfaData)
-            . ($fileCount > 1 ? '.%.2d' : '');
+            . ($fileCount > 1 ? '.%02.d' : '');
 
             for ($i = 0; $i < $fileCount; $i++) {
-                $filename = sprintf($filenameFormat, $i + 1)
-                    . strrchr($filenames[$i], '.');
+                $suffix = strrchr($filenames[$i], '.');
+                $filename = sprintf($filenameFormat, $i + 1) . $suffix;
 
-                $this->progressReporter_->write("Writing $filename ...");
+                if (isset($this->rotateDegrees_)) {
+                    $tmpname = tempnam(getcwd(), 'scan.process.') . $suffix;
 
-                $cmdLine = "exiftool -o $filename "
-                    . $this->createExiftoolOpts($rdfaData)
-                    . $filenames[$i];
+                    $image = new \Imagick($filenames[$i]);
 
-                $this->progressReporter_->write($cmdLine, 1);
-
-                if (passthru($cmdLine, $exitCode) === false) {
-                    throw (new ProcessFailed())->setMessageContext(
-                        [ 'command' => $cmdLine ]
+                    $image->rotateImage(
+                        self::BACKGROUND,
+                        $this->rotateDegrees_
                     );
-                }
 
-                if ($exitCode) {
-                    throw (new ProcessFailed())->setMessageContext(
-                        [ 'command' => $cmdLine ]
-                    );
+                    $image->writeImage($tmpname);
+
+                    $this->runExiftool($rdfaData, $tmpname, $filename);
+                } else {
+                    $this->runExiftool($rdfaData, $filenames[$i], $filename);
                 }
             }
         }
     }
 
-    protected function createExiftoolOpts(RdfaData $rdfaData): string
-    {
-        $opts = '-HostComputer=' . getenv('HOSTNAME') . ' ';
+    private function runExiftool(
+        RdfaData $rdfaData,
+        string $infilename,
+        string $outfilename
+    ): void {
+        $this->progressReporter_->write("Writing $outfilename ...");
+
+        $cmdLine = 'exiftool '
+            . "-o $outfilename "
+            . '-HostComputer=' . getenv('HOSTNAME') . ' ';
 
         foreach ($rdfaData as $curie => $value) {
             if (isset(static::EXIFTOOL_MAP[$curie])) {
@@ -193,11 +218,25 @@ class Processor
                     $value = $value->format('Y-m-d');
                 }
 
-                $opts .=
+                $cmdLine .=
                     '-' . static::EXIFTOOL_MAP[$curie] . "='$value' ";
             }
         }
 
-        return $opts;
+        $cmdLine .= $infilename;
+
+        $this->progressReporter_->write($cmdLine, 1);
+
+        if (passthru($cmdLine, $exitCode) === false) {
+            throw (new ProcessFailed())->setMessageContext(
+                [ 'command' => $cmdLine ]
+            );
+        }
+
+        if ($exitCode) {
+            throw (new ProcessFailed())->setMessageContext(
+                [ 'command' => $cmdLine ]
+            );
+        }
     }
 }

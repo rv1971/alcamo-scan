@@ -254,7 +254,8 @@ class ScanCli extends AbstractCli
                 $coverages,
                 $batchSize,
                 $filenames,
-                $this->getOption('pdf'),
+                $this->getOption('rotate') ? 90 : null,
+                $this->getOption('pdf') ?? false,
                 $this->getProgressReporter()
             );
 
