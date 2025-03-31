@@ -8,7 +8,7 @@ class Validator
 
     public const MODES = [ 'color', 'gray', 'binary' ];
 
-    public const TYPES = [ 'image', 'text' ];
+    public const TYPES = [ 'Image', 'Text' ];
 
     public static function validateBatch($value): bool
     {
@@ -20,14 +20,19 @@ class Validator
         return in_array($value, static::FORMATS);
     }
 
+    public static function validateDates($value): bool
+    {
+        return preg_match('/20\d\d-\d\d-\d\d(,20\d\d-\d\d-\d\d)*/', $value);
+    }
+
     public static function validateGeometry($value): bool
     {
-        return preg_match('/\d+x\d+(\+\d+\+\d+)?|a[456]r?/', $value);
+        return preg_match('/\d+x\d+(\+\d+\+\d+)?|a4|a[56]r?/', $value);
     }
 
     public static function validateLanguage($value): bool
     {
-        return preg_match('[a-z][a-z]', $value);
+        return preg_match('/[a-z][a-z]/', $value);
     }
 
     public static function validateMode($value): bool
@@ -37,7 +42,7 @@ class Validator
 
     public static function validateResolution($value): bool
     {
-        return is_numeric($value) && $value > 0 && $value < 2400;
+        return is_numeric($value) && $value > 0 && $value <= 2400;
     }
 
     public static function validateType($value): bool

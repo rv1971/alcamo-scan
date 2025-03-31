@@ -144,7 +144,7 @@ class Processor
             }
         }
 
-        return implode('.', $props);
+        return strtr(implode('.', $props), ' ', '_');
     }
 
     private function processBatch(RdfaData $rdfaData, array $filenames): void
@@ -194,6 +194,8 @@ class Processor
                     $image->writeImage($tmpname);
 
                     $this->runExiftool($rdfaData, $tmpname, $filename);
+
+                    unlink($tmpname);
                 } else {
                     $this->runExiftool($rdfaData, $filenames[$i], $filename);
                 }

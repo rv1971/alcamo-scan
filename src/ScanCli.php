@@ -25,7 +25,7 @@ class ScanCli extends AbstractCli
             'batch' => [
                 'b',
                 GetOpt::OPTIONAL_ARGUMENT,
-                'Pages per RDF tuple. [All in ADF]',
+                'Multiple pages per RDF tuple. [All available pages]',
                 'count',
                 Validator::class . '::validateBatch'
             ],
@@ -44,7 +44,8 @@ class ScanCli extends AbstractCli
                 'd',
                 GetOpt::REQUIRED_ARGUMENT,
                 'Dublin core date values.',
-                'comma-separated'
+                'comma-separated',
+                Validator::class . '::validateDates'
             ],
             'device' => [
                 'D',
@@ -55,7 +56,7 @@ class ScanCli extends AbstractCli
             'even' => [
                 null,
                 GetOpt::NO_ARGUMENT,
-                'Only do scan of even pages.'
+                'Only do raw scan of even pages.'
             ],
             'format' => [
                 'f',
@@ -93,7 +94,7 @@ class ScanCli extends AbstractCli
             'odd' => [
                 null,
                 GetOpt::NO_ARGUMENT,
-                'Only do scan of odd pages.'
+                'Only do raw scan of odd pages.'
             ],
             'pdf' => [
                 null,
@@ -168,12 +169,20 @@ class ScanCli extends AbstractCli
         } elseif (!$this->getOption('process-only')) {
             if (count($this->getOperand('file'))) {
                 throw new ArgumentException(
-                    'No filename operands can be given in combined mode'
+                    'No filename operands can be given in scan-and-process mode'
                 );
             }
         }
 
         $batchSize = $this->getOption('batch');
+
+        if (!isset($batchSize)) {
+            /* If --batch not given, scan one page. */
+            $batchSize = 1;
+        } elseif ($batchSize == 1) {
+            /* If --batch given without argument, scan all available pages. */
+            $batchSize = null;
+        }
 
         $filenamePrefix = $scanOnly && $this->getOperand('file')
             ? $this->getOperand('file')[0]

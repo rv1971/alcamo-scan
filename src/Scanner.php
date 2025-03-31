@@ -103,7 +103,7 @@ class Scanner
             ? self::MODE_MAP[$this->backend_][$this->mode_]
             : self::MODE_MAP['*'][$this->mode_];
 
-        $filenameFormat = "{$this->filenamePrefix_}.%.2d.{$this->format_}";
+        $filenameFormat = "{$this->filenamePrefix_}.%02d.{$this->format_}";
 
         $cmdLine = "scanimage "
             . "--format={$this->format_} "
