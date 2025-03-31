@@ -150,7 +150,11 @@ class Processor
     private function processBatch(RdfaData $rdfaData, array $filenames): void
     {
         if ($this->createPdf_) {
-            $tmpname = tempnam(getcwd(), 'scan.process.') . '.pdf';
+            $tmpname0 = tempnam(getcwd(), 'scan.process.');
+
+            $tmpname = "$tmpname0.pdf";
+
+            rename($tmpname0, $tmpname);
 
             $images = new \Imagick($filenames);
 
@@ -182,7 +186,11 @@ class Processor
                 $filename = sprintf($filenameFormat, $i + 1) . $suffix;
 
                 if (isset($this->rotateDegrees_)) {
-                    $tmpname = tempnam(getcwd(), 'scan.process.') . $suffix;
+                    $tmpname0 = tempnam(getcwd(), 'scan.process.');
+
+                    $tmpname = "$tmpname0.$suffix";
+
+                    rename($tmpname0, $tmpname);
 
                     $image = new \Imagick($filenames[$i]);
 
