@@ -33,6 +33,7 @@ class Processor
     private $titles_;           ///< array
     private $coverages_;        ///< array
     private $batchSize_;        ///< array
+    private $combineMode_;      ///< bool
     private $filenames_;        ///< array
     private $rotateDegrees_;    ///< ?int
     private $createPdf_;        ///< bool
@@ -44,6 +45,7 @@ class Processor
         array $titles,
         array $coverages,
         ?int $batchSize,
+        bool $combineMode,
         array $filenames,
         ?int $rotateDegrees,
         bool $createPdf,
@@ -59,6 +61,8 @@ class Processor
 
         $this->batchSize_ = $batchSize;
 
+        $this->combineMode_ = $combineMode;
+
         $this->filenames_ = $filenames;
 
         $this->rotateDegrees_ = $rotateDegrees;
@@ -68,7 +72,13 @@ class Processor
         $this->progressReporter_ = $progressReporter;
 
         if (isset($this->batchSize_)) {
-            $requiredFileCount = count($this->dates_)
+            $requiredFileCount = $this->combineMode_
+                ? max(
+                    count($this->dates_),
+                    count($this->titles_),
+                    count($this->coverages_)
+                ) * $this->batchSize_
+                : count($this->dates_)
                 * count($this->titles_)
                 * count($this->coverages_)
                 * $this->batchSize_;
@@ -87,47 +97,104 @@ class Processor
 
     public function run(): void
     {
-        if (isset($this->batchSize_)) {
-            $fileNo = 0;
-
-            foreach ($this->dates_ as $date) {
-                foreach ($this->titles_ as $title) {
-                    foreach ($this->coverages_ as $coverage) {
-                        $this->processBatch(
-                            $this->fixedRdfaData_->replace(
-                                RdfaData::newFromIterable(
-                                    [
-                                        'dc:coverage' => $coverage,
-                                        'dc:date' => $date,
-                                        'dc:title' => $title
-                                    ]
-                                )
-                            ),
-                            array_slice(
-                                $this->filenames_,
-                                $fileNo,
-                                $this->batchSize_
-                            )
-                        );
-
-                        $fileNo += $this->batchSize_;
-                    }
-                }
-            }
+        if ($this->combineMode_) {
+            $this->runCombineMode();
+        } elseif (isset($this->batchSize_)) {
+            $this->runCartesianProductMode();
         } else {
+            $this->runSingleDocumentMode();
+        }
+    }
+
+
+    protected function runCombineMode(): void
+    {
+        $fileNo = 0;
+
+        $listSize = max(
+            count($this->dates_),
+            count($this->titles_),
+            count($this->coverages_)
+        );
+
+        if (count($this->dates_) == 1) {
+            $this->dates_ = array_fill(0, $listSize, $this->dates_[0]);
+        }
+
+        if (count($this->titles_) == 1) {
+            $this->titles_ = array_fill(0, $listSize, $this->titles_[0]);
+        }
+
+        if (count($this->coverages_) == 1) {
+            $this->coverages_ = array_fill(0, $listSize, $this->coverages_[0]);
+        }
+
+        for ($i = 0; $i < $listSize; $i++) {
             $this->processBatch(
                 $this->fixedRdfaData_->replace(
                     RdfaData::newFromIterable(
                         [
-                            'dc:coverage' => $this->coverages_[0],
-                            'dc:date' => $this->dates_[0],
-                            'dc:title' => $this->titles_[0]
+                            'dc:coverage' => $this->coverages_[$i],
+                            'dc:date' => $this->dates_[$i],
+                            'dc:title' => $this->titles_[$i]
                         ]
                     )
                 ),
-                $this->filenames_
+                array_slice(
+                    $this->filenames_,
+                    $fileNo,
+                    $this->batchSize_
+                )
             );
+
+            $fileNo += $this->batchSize_;
         }
+    }
+
+    protected function runCartesianProductMode(): void
+    {
+        $fileNo = 0;
+
+        foreach ($this->dates_ as $date) {
+            foreach ($this->titles_ as $title) {
+                foreach ($this->coverages_ as $coverage) {
+                    $this->processBatch(
+                        $this->fixedRdfaData_->replace(
+                            RdfaData::newFromIterable(
+                                [
+                                    'dc:coverage' => $coverage,
+                                    'dc:date' => $date,
+                                    'dc:title' => $title
+                                ]
+                            )
+                        ),
+                        array_slice(
+                            $this->filenames_,
+                            $fileNo,
+                            $this->batchSize_
+                        )
+                    );
+
+                    $fileNo += $this->batchSize_;
+                }
+            }
+        }
+    }
+
+    protected function runSingleDocumentMode(): void
+    {
+        $this->processBatch(
+            $this->fixedRdfaData_->replace(
+                RdfaData::newFromIterable(
+                    [
+                        'dc:coverage' => $this->coverages_[0],
+                        'dc:date' => $this->dates_[0],
+                        'dc:title' => $this->titles_[0]
+                    ]
+                )
+            ),
+            $this->filenames_
+        );
     }
 
     protected function createBasename(RdfaData $rdfaData): string
