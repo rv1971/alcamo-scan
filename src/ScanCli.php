@@ -3,11 +3,14 @@
 namespace alcamo\scan;
 
 use alcamo\cli\AbstractCli;
+use alcamo\conf\{HasConfTrait, Loader, XdgFileFinder};
 use alcamo\rdfa\RdfaData;
 use GetOpt\{ArgumentException, GetOpt, Operand};
 
 class ScanCli extends AbstractCli
 {
+    use HasConfTrait;
+
     public const DEFAULT_FORMAT = 'jpeg';
 
     public const OPTIONS =
@@ -27,7 +30,21 @@ class ScanCli extends AbstractCli
                 GetOpt::OPTIONAL_ARGUMENT,
                 'Multiple pages per RDF tuple. [All available pages]',
                 'count',
-                Validator::class . '::validateBatch'
+                Validator::class . '::validatePageNumber'
+            ],
+            'batch-start' => [
+                null,
+                GetOpt::REQUIRED_ARGUMENT,
+                'Start with this page number.',
+                'no',
+                Validator::class . '::validatePageNumber'
+            ],
+            'batch-increment' => [
+                null,
+                GetOpt::REQUIRED_ARGUMENT,
+                'Increment page numbers by this.',
+                'count',
+                Validator::class . '::validatePageNumberIncrement'
             ],
             'coverage' => [
                 'a',
@@ -111,12 +128,23 @@ class ScanCli extends AbstractCli
                 GetOpt::REQUIRED_ARGUMENT,
                 'Dublin core publisher.'
             ],
+            'refresh-device' => [
+                null,
+                GetOpt::NO_ARGUMENT,
+                'Choose a new device based on the configuration. Useful if '
+                . 'the device name of a USB scanner has changed.'
+            ],
             'resolution' => [
                 'r',
                 GetOpt::REQUIRED_ARGUMENT,
                 'Resolution. [' . Scanner::DEFAULT_RESOLUTION . ']',
                 'dpi',
                 Validator::class . '::validateResolution'
+            ],
+            'reverse' => [
+                null,
+                GetOpt::NO_ARGUMENT,
+                'Reverse order of pages.'
             ],
             'rotate' => [
                 'R',
@@ -148,8 +176,26 @@ class ScanCli extends AbstractCli
         'file' => Operand::MULTIPLE
     ];
 
+    public const DESCRIPTION = <<<'EOT'
+Reads defaults from $XDG_CONFIG_HOME/alcamo/scan.ini:
+* dc:type  Value for dc:type.
+* device   Use the device matching this regexp. The chosen device is stored
+           in a state file and re-used in the next invocation.
+EOT;
+
+    public const LIST_DEVICES_CMD = 'scanimage -f "%d "';
+
+    private $stateFile_; ///< string
+    private $state_;     ///< array
+
     public function innerRun(): int
     {
+        $confLoader = new Loader();
+
+        $this->conf_ = $confLoader->load('scan.ini');
+
+        $this->loadState();
+
         $scanOnly = $this->getOption('scan-only')
             || $this->getOption('even') || $this->getOption('odd');
 
@@ -174,7 +220,24 @@ class ScanCli extends AbstractCli
             }
         }
 
+        $batchStart = $this->getOption('batch-start')
+            ?? ($this->getOption('even') ? 2 : null);
+
+        $batchIncrement = $this->getOption('batch-increment')
+            ?? ($this->getOption('even') || $this->getOption('odd') ? 2 : null);
+
+        $device = $this->getOption('device') ?? $this->state_['device'];
+
         $batchSize = $this->getOption('batch');
+
+        /* If --batch is not given, --even and --odd imply --batch without
+         * argument. */
+        if (
+            !isset($batchSize)
+            && ($this->getOption('even') || $this->getOption('odd'))
+        ) {
+            $batchSize = 1;
+        }
 
         if (!isset($batchSize)) {
             /* If --batch not given, scan one page. */
@@ -186,7 +249,7 @@ class ScanCli extends AbstractCli
 
         $filenamePrefix = $scanOnly && $this->getOperand('file')
             ? $this->getOperand('file')[0]
-            : 'scan.' . date('Ydm');
+            : 'scan.' . date('Ydm\THis');
 
         $format = $this->getOption('format') ?? self::DEFAULT_FORMAT;
 
@@ -203,19 +266,19 @@ class ScanCli extends AbstractCli
         if (!isset($batchSize)) {
             if (count($dates) > 1) {
                 throw new ArgumentException(
-                    '--batch-size must be given with multiple dates'
+                    '--batch must be given with multiple dates'
                 );
             }
 
             if (count($titles) > 1) {
                 throw new ArgumentException(
-                    '--batch-size must be given with multiple titles'
+                    '--batch must be given with multiple titles'
                 );
             }
 
             if (count($coverages) > 1) {
                 throw new ArgumentException(
-                    '--batch-size must be given with multiple coverages'
+                    '--batch must be given with multiple coverages'
                 );
             }
         }
@@ -227,17 +290,15 @@ class ScanCli extends AbstractCli
         if (!$this->getOption('process-only')) {
             $scanner = new Scanner(
                 (bool)$this->getOption('adf'),
-                $this->getOption('batch-start'),
-                $this->getOption('device'),
+                $batchStart,
+                $batchIncrement,
+                $device,
                 $filenamePrefix,
                 $format,
                 $this->getOption('geometry'),
                 $this->getOption('mode'),
                 $this->getProgressReporter(),
                 $this->getOption('resolution'),
-                ($this->getOption('odd')
-                 ? 1
-                 : ($this->getOption('even') ? 2 : null)),
                 $totalPageCount
             );
 
@@ -248,6 +309,10 @@ class ScanCli extends AbstractCli
             $filenames = $this->getOperand('file')
                 ?: glob("$filenamePrefix.[0-9][0-9].$format", GLOB_ERR);
 
+            if ($this->getOption('reverse')) {
+                $filenames = array_reverse($filenames);
+            }
+
             $processor = new Processor(
                 RdfaData::newFromIterable(
                     [
@@ -255,7 +320,8 @@ class ScanCli extends AbstractCli
                         'dc:creator'   => $this->getOption('creator'),
                         'dc:language'  => $this->getOption('language'),
                         'dc:publisher' => $this->getOption('publisher'),
-                        'dc:type'      => $this->getOption('type')
+                        'dc:type'      =>
+                        $this->getOption('type') ?? $this->conf_['dc:type']
                     ]
                 ),
                 $dates,
@@ -271,16 +337,52 @@ class ScanCli extends AbstractCli
             $processor->run();
 
 
-            if (
-                !$this->getOption('process-only')
-                && !$this->getOption('no-remove-raw-files')
-            ) {
+            if (!$this->getOption('no-remove-raw-files')) {
                 foreach ($filenames as $filename) {
                     unlink($filename);
                 }
             }
         }
 
+        $this->saveState();
+
         return 0;
+    }
+
+    protected function loadState(): void
+    {
+        $this->stateFile_ =
+            (new XdgFileFinder(null, 'STATE'))->find('scan.json');
+
+        if (is_readable($this->stateFile_)) {
+            $this->state_ =
+                json_decode(file_get_contents($this->stateFile_), true);
+        } else {
+            $this->state_ = [];
+        }
+
+        if (
+            isset($this->conf_['device'])
+            && (!isset($this->state_['device'])
+                || $this->getOption('refresh-device'))
+        ) {
+            $devices = shell_exec(static::LIST_DEVICES_CMD);
+
+            if (is_string($devices)) {
+                $matchingDevices = preg_grep(
+                    '/' . $this->conf_['device'] . '/',
+                    explode(' ', $devices)
+                );
+
+                if ($matchingDevices) {
+                    $this->state_['device'] = reset($matchingDevices);
+                }
+            }
+        }
+    }
+
+    protected function saveState(): void
+    {
+        file_put_contents($this->stateFile_, json_encode($this->state_));
     }
 }

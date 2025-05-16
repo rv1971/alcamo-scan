@@ -20,7 +20,9 @@ class Scanner
 	'a5'  => [ 148, 210 ],
 	'a5r' => [ 210, 148 ],
 	'a6'  => [ 105, 148 ],
-	'a6r' => [ 148, 105 ]
+	'a6r' => [ 148, 105 ],
+	'a7'  => [ 74, 105 ],
+	'a7r' => [ 105, 74 ]
     ];
 
     public const MODE_MAP = [
@@ -39,6 +41,7 @@ class Scanner
     private $adf_;              ///< bool
     private $backend_;          ///< ?string
     private $batchStart_;       ///< ?int
+    private $batchIncrement_;   ///< ?int
     private $device_;           ///< ?string
     private $filenamePrefix_;   ///< string
     private $format_;           ///< string
@@ -46,12 +49,12 @@ class Scanner
     private $mode_;             ///< string
     private $progressReporter_; ///< ProgressReporter
     private $resolution_;       ///< int
-    private $subset_;           ///< ?int
     private $totalPageCount_;   ///< ?int
 
     public function __construct(
         bool $adf,
         ?int $batchStart,
+        ?int $batchIncrement,
         ?string $device,
         string $filenamePrefix,
         string $format,
@@ -59,7 +62,6 @@ class Scanner
         ?string $mode,
         ProgressReporter $progressReporter,
         ?int $resolution,
-        ?int $subset,
         ?int $totalPageCount
     ) {
         $this->adf_ = $adf;
@@ -79,7 +81,7 @@ class Scanner
         }
 
         if (ctype_digit($geometry[0])) {
-            $this->geometry_ = preg_split('[x\+]', $geometry);
+            $this->geometry_ = preg_split('/[x\+]/', $geometry);
         } else {
             $this->geometry_ = self::GEOMETRY_MAP[$geometry];
         }
@@ -90,9 +92,9 @@ class Scanner
 
         $this->resolution_ = $resolution ?? self::DEFAULT_RESOLUTION;
 
-        $this->subset_ = $subset;
+        $this->batchStart_ = $batchStart;
 
-        $this->batchStart_ = $batchStart ?? (($this->subset_ == 2) ? 2 : null);
+        $this->batchIncrement_ = $batchIncrement;
 
         $this->totalPageCount_ = $totalPageCount;
     }
@@ -120,12 +122,12 @@ class Scanner
             $cmdLine .= "--batch-count={$this->totalPageCount_} ";
         }
 
-        if (isset($this->subset_)) {
-            $cmdLine .= "--batch-double ";
-        }
-
         if (isset($this->batchStart_)) {
             $cmdLine .= "--batch-start={$this->batchStart_} ";
+        }
+
+        if (isset($this->batchIncrement_)) {
+            $cmdLine .= "--batch-increment={$this->batchIncrement_} ";
         }
 
         $cmdLine .= "-x {$this->geometry_[0]} -y {$this->geometry_[1]} ";
@@ -146,7 +148,7 @@ class Scanner
 
         if ($this->adf_) {
             $cmdLine .= "--source='Automatic Document Feeder' ";
-        } else {
+        } elseif ($this->totalPageCount_ !== 1) {
             $cmdLine .= "--batch-prompt ";
         }
 
