@@ -36,6 +36,7 @@ class Processor
     private $combineMode_;      ///< bool
     private $filenames_;        ///< array
     private $rotateDegrees_;    ///< ?int
+    private $batchStart_;       ///< ?int
     private $createPdf_;        ///< bool
     private $progressReporter_; ///< ProgressReporter
 
@@ -48,6 +49,7 @@ class Processor
         bool $combineMode,
         array $filenames,
         ?int $rotateDegrees,
+        ?int $batchStart,
         bool $createPdf,
         ProgressReporter $progressReporter
     ) {
@@ -66,6 +68,8 @@ class Processor
         $this->filenames_ = $filenames;
 
         $this->rotateDegrees_ = $rotateDegrees;
+
+        $this->batchStart_ = $batchStart;
 
         $this->createPdf_ = $createPdf;
 
@@ -109,7 +113,7 @@ class Processor
 
     protected function runCombineMode(): void
     {
-        $fileNo = 0;
+        $fileNo = $this->batchStart_;
 
         $listSize = max(
             count($this->dates_),
@@ -153,7 +157,7 @@ class Processor
 
     protected function runCartesianProductMode(): void
     {
-        $fileNo = 0;
+        $fileNo = $this->batchStart_;
 
         foreach ($this->dates_ as $date) {
             foreach ($this->titles_ as $title) {

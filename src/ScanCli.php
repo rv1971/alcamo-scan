@@ -233,18 +233,14 @@ EOT;
 
         $device = $this->getOption('device') ?? $this->state_['device'];
 
-        $batchSize = $this->getOption('batch');
+        /* A number of options imply --batch */
+        $batchSize = $this->getOption('batch')
+            || $this->getOption('batch-increment')
+            || $this->getOption('batch-start')
+            || $this->getOption('even')
+            || $this->getOption('odd');
 
-        /* If --batch is not given, --even and --odd imply --batch without
-         * argument. */
-        if (
-            !isset($batchSize)
-            && ($this->getOption('even') || $this->getOption('odd'))
-        ) {
-            $batchSize = 1;
-        }
-
-        if (!isset($batchSize)) {
+        if (!$batchSize) {
             /* If --batch not given, scan one page. */
             $batchSize = 1;
         } elseif ($batchSize == 1) {
@@ -357,6 +353,7 @@ EOT;
                 $this->getOption('combine') ?? false,
                 $filenames,
                 $this->getOption('rotate') ? 90 : null,
+                $batchStart,
                 $this->getOption('pdf') ?? false,
                 $this->getProgressReporter()
             );
