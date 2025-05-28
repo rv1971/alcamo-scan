@@ -108,6 +108,11 @@ class ScanCli extends AbstractCli
                 'mode',
                 Validator::class . '::validateMode'
             ],
+            'no-pdf' => [
+                null,
+                GetOpt::NO_ARGUMENT,
+                'Do not create PDF output.'
+            ],
             'no-remove-raw-files' => [
                 null,
                 GetOpt::NO_ARGUMENT,
@@ -185,6 +190,7 @@ class ScanCli extends AbstractCli
 Reads defaults from $XDG_CONFIG_HOME/alcamo/scan.ini:
 * dc:language  Value for dc:language.
 * dc:type      Value for dc:type.
+* autopdf      If true, automatically create PDF for for multipage documents.
 * device       Use the device matching this regexp. The chosen device is stored
                in a state file and re-used in the next invocation.
 EOT;
@@ -339,6 +345,23 @@ EOT;
                 $filenames = array_reverse($filenames);
             }
 
+            switch (true) {
+                case $this->getOption('no-pdf'):
+                    $createPdf = false;
+                    break;
+
+                case $this->getOption('pdf'):
+                    $createPdf = true;
+                    break;
+
+                case $this->conf_['autopdf'] == 'true':
+                    $createPdf = $batchSize != 1;
+                    break;
+
+                default:
+                    $createPdf = false;
+            }
+
             $processor = new Processor(
                 RdfaData::newFromIterable(
                     [
@@ -360,7 +383,7 @@ EOT;
                 $filenames,
                 $this->getOption('rotate') ? 90 : null,
                 $batchStart,
-                $this->getOption('pdf') ?? false,
+                $createPdf,
                 $this->getProgressReporter()
             );
 
