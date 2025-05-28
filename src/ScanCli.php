@@ -183,9 +183,10 @@ class ScanCli extends AbstractCli
 
     public const DESCRIPTION = <<<'EOT'
 Reads defaults from $XDG_CONFIG_HOME/alcamo/scan.ini:
-* dc:type  Value for dc:type.
-* device   Use the device matching this regexp. The chosen device is stored
-           in a state file and re-used in the next invocation.
+* dc:language  Value for dc:language.
+* dc:type      Value for dc:type.
+* device       Use the device matching this regexp. The chosen device is stored
+               in a state file and re-used in the next invocation.
 EOT;
 
     public const LIST_DEVICES_CMD = 'scanimage -f "%d "';
@@ -234,11 +235,14 @@ EOT;
         $device = $this->getOption('device') ?? $this->state_['device'];
 
         /* A number of options imply --batch */
-        $batchSize = $this->getOption('batch')
-            || $this->getOption('batch-increment')
-            || $this->getOption('batch-start')
-            || $this->getOption('even')
-            || $this->getOption('odd');
+        if ($this->getOption('batch')) {
+            $batchSize = (int)$this->getOption('batch');
+        } else {
+            $batchSize =  $this->getOption('batch-increment')
+                || $this->getOption('batch-start')
+                || $this->getOption('even')
+                || $this->getOption('odd');
+        }
 
         if (!$batchSize) {
             /* If --batch not given, scan one page. */
@@ -340,10 +344,12 @@ EOT;
                     [
                         'dc:audience'  => $this->getOption('audience'),
                         'dc:creator'   => $this->getOption('creator'),
-                        'dc:language'  => $this->getOption('language'),
+                        'dc:language'
+                        => $this->getOption('language')
+                        ?? $this->conf_['dc:language'],
                         'dc:publisher' => $this->getOption('publisher'),
-                        'dc:type'      =>
-                        $this->getOption('type') ?? $this->conf_['dc:type']
+                        'dc:type'
+                        => $this->getOption('type') ?? $this->conf_['dc:type']
                     ]
                 ),
                 $dates,
