@@ -238,7 +238,9 @@ EOT;
         $batchIncrement = $this->getOption('batch-increment')
             ?? ($this->getOption('even') || $this->getOption('odd') ? 2 : null);
 
-        $device = $this->getOption('device') ?? $this->state_['device'];
+        $device = $this->getOption('device')
+            ?? getenv('SANE_DEFAULT_DEVICE')
+            ?? $this->state_['device'];
 
         /* A number of options imply --batch */
         if ($this->getOption('batch')) {
