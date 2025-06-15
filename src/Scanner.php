@@ -7,24 +7,6 @@ use alcamo\exception\ProcessFailed;
 
 class Scanner
 {
-    public const DEFAULT_BUFFER_SIZE = 64;
-
-    public const DEFAULT_GEOMETRY = 'a4';
-
-    public const DEFAULT_MODE = 'color';
-
-    public const DEFAULT_RESOLUTION = 150;
-
-    public const GEOMETRY_MAP = [
-        'a4'  => [ 210, 297 ],
-	'a5'  => [ 148, 210 ],
-	'a5r' => [ 210, 148 ],
-	'a6'  => [ 105, 148 ],
-	'a6r' => [ 148, 105 ],
-	'a7'  => [ 74, 105 ],
-	'a7r' => [ 105, 74 ]
-    ];
-
     public const MODE_MAP = [
         'epkowa' => [
             'color'  => 'Color',
@@ -38,85 +20,51 @@ class Scanner
         ]
     ];
 
-    private $adf_;              ///< bool
-    private $backend_;          ///< ?string
+    private $device_;           ///< device
     private $batchStart_;       ///< ?int
     private $batchIncrement_;   ///< ?int
-    private $device_;           ///< ?string
     private $filenamePrefix_;   ///< string
-    private $format_;           ///< string
-    private $geometry_;         ///< array
-    private $mode_;             ///< string
     private $progressReporter_; ///< ProgressReporter
-    private $resolution_;       ///< int
     private $totalPageCount_;   ///< ?int
 
     public function __construct(
-        bool $adf,
+        Device $device,
         ?int $batchStart,
         ?int $batchIncrement,
-        ?string $device,
         string $filenamePrefix,
-        string $format,
-        ?string $geometry,
-        ?string $mode,
         ProgressReporter $progressReporter,
-        ?int $resolution,
         ?int $totalPageCount
     ) {
-        $this->adf_ = $adf;
-
-        $this->device_ = $device ?? getenv('SANE_DEFAULT_DEVICE') ?: null;
-
-        if (isset($this->device_)) {
-            $this->backend_ = explode(':', $this->device_, 2)[0];
-        }
-
-        $this->filenamePrefix_ = $filenamePrefix;
-
-        $this->format_ = $format;
-
-        if (!isset($geometry)) {
-            $geometry = self::DEFAULT_GEOMETRY;
-        }
-
-        if (ctype_digit($geometry[0])) {
-            $this->geometry_ = preg_split('/[x\+]/', $geometry);
-        } else {
-            $this->geometry_ = self::GEOMETRY_MAP[$geometry];
-        }
-
-        $this->mode_ = $mode ?? self::DEFAULT_MODE;
-
-        $this->progressReporter_ = $progressReporter;
-
-        $this->resolution_ = $resolution ?? self::DEFAULT_RESOLUTION;
+        $this->device_ = $device;
 
         $this->batchStart_ = $batchStart;
 
         $this->batchIncrement_ = $batchIncrement;
+
+        $this->filenamePrefix_ = $filenamePrefix;
+
+        $this->progressReporter_ = $progressReporter;
 
         $this->totalPageCount_ = $totalPageCount;
     }
 
     public function run(): void
     {
-        $backendMode = isset(self::MODE_MAP[$this->backend_])
-            ? self::MODE_MAP[$this->backend_][$this->mode_]
-            : self::MODE_MAP['*'][$this->mode_];
+        $backend = explode(':', $this->device_['name'], 2)[0];
 
-        $filenameFormat = "{$this->filenamePrefix_}.%02d.{$this->format_}";
+        $backendMode = (self::MODE_MAP[$backend] ?? self::MODE_MAP['*'])
+            [$this->device_['mode']];
+
+        $filenameFormat =
+            "{$this->filenamePrefix_}.%02d.{$this->device_['format']}";
 
         $cmdLine = "scanimage "
-            . "--format={$this->format_} "
+            . "--device-name={$this->device_['name']} "
+            . "--format={$this->device_['format']} "
             . "--batch=$filenameFormat "
             . '-p '
             . "--mode=$backendMode "
-            . '--buffer-size=' . self::DEFAULT_BUFFER_SIZE . ' ';
-
-        if (isset($this->device_)) {
-            $cmdLine .= "--device-name={$this->device_} ";
-        }
+            . "--buffer-size={$this->device_['bufferSize']} ";
 
         if (isset($this->totalPageCount_)) {
             $cmdLine .= "--batch-count={$this->totalPageCount_} ";
@@ -130,23 +78,25 @@ class Scanner
             $cmdLine .= "--batch-increment={$this->batchIncrement_} ";
         }
 
-        $cmdLine .= "-x {$this->geometry_[0]} -y {$this->geometry_[1]} ";
+        $geometry = preg_split('/[x\+]/', $this->device_['geometry']);
 
-        if (isset($this->geometry_[2])) {
-            $cmdLine .= "-l {$this->geometry_[2]} -t {$this->geometry_[3]} ";
+        $cmdLine .= "-x {$geometry[0]} -y {$geometry[1]} ";
+
+        if (isset($geometry[2])) {
+            $cmdLine .= "-l {$geometry[2]} -t {$geometry[3]} ";
         }
 
-        switch ($this->backend_) {
+        switch ($backend) {
             case 'epkowa':
-                $cmdLine .= "--x-resolution={$this->resolution_} "
-                    . "--y-resolution={$this->resolution_} ";
+                $cmdLine .= "--x-resolution={$this->device_['resolution']} "
+                    . "--y-resolution={$this->device_['resolution']} ";
                 break;
 
             default:
-                $cmdLine .= "--resolution={$this->resolution_} ";
+                $cmdLine .= "--resolution={$this->device_['resolution']} ";
         }
 
-        if ($this->adf_) {
+        if ($this->device_['adf']) {
             $cmdLine .= "--source='Automatic Document Feeder' ";
         } elseif ($this->totalPageCount_ !== 1) {
             $cmdLine .= "--batch-prompt ";

@@ -3,14 +3,11 @@
 namespace alcamo\scan;
 
 use alcamo\cli\AbstractCli;
-use alcamo\conf\{HasConfTrait, Loader, IniFileParser, XdgFileFinder};
 use alcamo\rdfa\RdfaData;
 use GetOpt\{ArgumentException, GetOpt, Operand};
 
 class ScanCli extends AbstractCli
 {
-    public const DEFAULT_FORMAT = 'jpeg';
-
     public const OPTIONS =
         [
             'adf' => [
@@ -47,7 +44,9 @@ class ScanCli extends AbstractCli
             'combine' => [
                 null,
                 GetOpt::NO_ARGUMENT,
-                'Instead of creating the cartesian product of the lists of meta data, combine them. All meta data options with more than one entry must have the same length.'
+                'Instead of creating the cartesian product of the lists of '
+                . 'meta data, combine them. All meta data options with more '
+                . 'than one entry must have the same length.'
             ],
             'coverage' => [
                 'a',
@@ -81,9 +80,10 @@ class ScanCli extends AbstractCli
             'format' => [
                 'f',
                 GetOpt::REQUIRED_ARGUMENT,
-                'File format. [' . self::DEFAULT_FORMAT . ']',
-                null,
-                Validator::class . '::validateFormat'
+                'File format. [' .
+                DeviceSettingsSanitizer::RULES['format']['default']
+                . ']',
+                null
             ],
             'create-example-ini' => [
                 null,
@@ -93,23 +93,23 @@ class ScanCli extends AbstractCli
             'geometry' => [
                 'g',
                 GetOpt::REQUIRED_ARGUMENT,
-                'Scan area geometry. [a4]',
-                'w>x<h>[+<l>+<t>]|<name',
-                Validator::class . '::validateGeometry'
+                'Scan area geometry. [' .
+                DeviceSettingsSanitizer::RULES['geometry']['default']
+                . ']',
+                'w>x<h>[+<l>+<t>]|<name'
             ],
             'language' => [
                 'l',
                 GetOpt::REQUIRED_ARGUMENT,
-                'Dublin core language.',
-                null,
-                Validator::class . '::validateLanguage'
+                'Dublin core language.'
             ],
             'mode' => [
                 null,
                 GetOpt::REQUIRED_ARGUMENT,
-                'Scan mode: color|gray|binary. [' . Scanner::DEFAULT_MODE . ']',
-                'mode',
-                Validator::class . '::validateMode'
+                'Scan mode: color|gray|binary. [' .
+                DeviceSettingsSanitizer::RULES['mode']['default']
+                . ']',
+                'mode'
             ],
             'no-pdf' => [
                 null,
@@ -141,18 +141,13 @@ class ScanCli extends AbstractCli
                 GetOpt::REQUIRED_ARGUMENT,
                 'Dublin core publisher.'
             ],
-            'refresh-device' => [
-                null,
-                GetOpt::NO_ARGUMENT,
-                'Choose a new device based on the configuration. Useful if '
-                . 'the device name of a USB scanner has changed.'
-            ],
             'resolution' => [
                 'r',
                 GetOpt::REQUIRED_ARGUMENT,
-                'Resolution. [' . Scanner::DEFAULT_RESOLUTION . ']',
-                'dpi',
-                Validator::class . '::validateResolution'
+                'Resolution. [' .
+                DeviceSettingsSanitizer::RULES['resolution']['default']
+                . ']',
+                'dpi'
             ],
             'reverse' => [
                 null,
@@ -178,9 +173,7 @@ class ScanCli extends AbstractCli
             'type' => [
                 'T',
                 GetOpt::REQUIRED_ARGUMENT,
-                'Dublin core type.',
-                null,
-                Validator::class . '::validateType'
+                'Dublin core type.'
             ]
         ]
         + parent::OPTIONS;
@@ -193,25 +186,37 @@ class ScanCli extends AbstractCli
 Reads settings and device aliases from $XDG_CONFIG_HOME/alcamo/scan.ini.
 EOT;
 
-    public const LIST_DEVICES_CMD = 'scanimage -f "%d "';
-
-    private $conf_;
-    private $settings_;
-    private $stateFile_; ///< string
-    private $state_;     ///< array
-
     public function innerRun(): int
     {
+        $iniFile = IniFile::newFromFilename();
+
         if ($this->getOption('create-example-ini')) {
-            echo $this->createExampleIniFile();
+            echo $iniFile->createExample();
             exit(0);
         }
 
-        $this->conf_ = (new Loader(new IniFileParser(true)))->load('scan.ini');
+        $settings = new Settings($iniFile['settings'] ?? []);
 
-        $this->settings_ = $this->conf_['settings'] ?? null;
+        $settings->addSettings(
+            [
+                'dc:language' => $this->getOption('language'),
+                'dc:type'     => $this->getOption('type')
+            ]
+        );
 
-        $this->loadState();
+        $device = $iniFile->getDevice(
+            $this->getOption('device') ?? getenv('SANE_DEFAULT_DEVICE')
+        );
+
+        $device->addSettings(
+            [
+                'adf'        => $this->getOption('adf'),
+                'format'     => $this->getOption('format'),
+                'geometry'   => $this->getOption('geometry'),
+                'mode'       => $this->getOption('mode'),
+                'resolution' => $this->getOption('resolution')
+            ]
+        );
 
         $scanOnly = $this->getOption('scan-only')
             || $this->getOption('even') || $this->getOption('odd');
@@ -243,38 +248,26 @@ EOT;
         $batchIncrement = $this->getOption('batch-increment')
             ?? ($this->getOption('even') || $this->getOption('odd') ? 2 : null);
 
-        $device = $this->getOption('device')
-            ?? getenv('SANE_DEFAULT_DEVICE')
-            ?? $this->state_['device'];
-
-        if (isset($this->conf_[$device])) {
-            $settings = $this->conf_[$device];
-            $device = $settings['name'];
-        }
-
         /* A number of options imply --batch */
         if ($this->getOption('batch')) {
-            $batchSize = (int)$this->getOption('batch');
+            $batchSize = $this->getOption('batch') === 1
+                ? null
+                : (int)$this->getOption('batch');
         } else {
-            $batchSize =  $this->getOption('batch-increment')
+            $batchSize = $this->getOption('batch-increment')
                 || $this->getOption('batch-start')
                 || $this->getOption('even')
                 || $this->getOption('odd');
-        }
 
-        if (!$batchSize) {
-            /* If --batch not given, scan one page. */
-            $batchSize = 1;
-        } elseif ($batchSize == 1) {
-            /* If --batch given without argument, scan all available pages. */
-            $batchSize = null;
+            if (!$batchSize) {
+                /* If --batch not given, scan one page. */
+                $batchSize = 1;
+            }
         }
 
         $filenamePrefix = $scanOnly && $this->getOperand('file')
             ? $this->getOperand('file')[0]
             : 'scan.' . date('Ydm\THis');
-
-        $format = $this->getOption('format') ?? self::DEFAULT_FORMAT;
 
         $dates = $this->getOption('date')
             ? explode(',', $this->getOption('date'))
@@ -289,7 +282,7 @@ EOT;
         if ($this->getOption('combine')) {
             if (!isset($batchSize)) {
                 throw new ArgumentException(
-                    '--batch must be given with --combine'
+                    '--batch with value must be given with --combine'
                 );
             }
 
@@ -312,19 +305,19 @@ EOT;
         } else {
             if (count($dates) > 1) {
                 throw new ArgumentException(
-                    '--batch must be given with multiple dates'
+                    '--batch with value must be given with multiple dates'
                 );
             }
 
             if (count($titles) > 1) {
                 throw new ArgumentException(
-                    '--batch must be given with multiple titles'
+                    '--batch with value must be given with multiple titles'
                 );
             }
 
             if (count($coverages) > 1) {
                 throw new ArgumentException(
-                    '--batch must be given with multiple coverages'
+                    '--batch with value must be given with multiple coverages'
                 );
             }
 
@@ -333,16 +326,11 @@ EOT;
 
         if (!$this->getOption('process-only')) {
             $scanner = new Scanner(
-                (bool)$this->getOption('adf'),
+                $device,
                 $batchStart,
                 $batchIncrement,
-                $device,
                 $filenamePrefix,
-                $format,
-                $this->getOption('geometry'),
-                $this->getOption('mode'),
                 $this->getProgressReporter(),
-                $this->getOption('resolution'),
                 $totalPageCount
             );
 
@@ -351,7 +339,10 @@ EOT;
 
         if (!$scanOnly) {
             $filenames = $this->getOperand('file')
-                ?: glob("$filenamePrefix.[0-9][0-9].$format", GLOB_ERR);
+                ?: glob(
+                    "$filenamePrefix.[0-9][0-9].{$device['format']}",
+                    GLOB_ERR
+                );
 
             if ($this->getOption('reverse')) {
                 $filenames = array_reverse($filenames);
@@ -366,7 +357,7 @@ EOT;
                     $createPdf = true;
                     break;
 
-                case $this->settings_['autopdf'] == 'true':
+                case $settings['autopdf'] == 'true':
                     $createPdf = $batchSize != 1;
                     break;
 
@@ -379,12 +370,9 @@ EOT;
                     [
                         'dc:audience'  => $this->getOption('audience'),
                         'dc:creator'   => $this->getOption('creator'),
-                        'dc:language'
-                        => $this->getOption('language')
-                        ?? $this->settings_['dc:language'],
+                        'dc:language'  => $settings['dc:language'],
                         'dc:publisher' => $this->getOption('publisher'),
-                        'dc:type' => $this->getOption('type')
-                        ?? $this->settings_['dc:type']
+                        'dc:type'      => $settings['dc:type']
                     ]
                 ),
                 $dates,
@@ -409,71 +397,6 @@ EOT;
             }
         }
 
-        $this->saveState();
-
         return 0;
-    }
-
-    protected function loadState(): void
-    {
-        $this->stateFile_ =
-            (new XdgFileFinder(null, 'STATE'))->find('scan.json');
-
-        if (is_readable($this->stateFile_)) {
-            $this->state_ =
-                json_decode(file_get_contents($this->stateFile_), true);
-        } else {
-            $this->state_ = [];
-        }
-
-        if (
-            isset($this->settings_['device'])
-            && (!isset($this->state_['device'])
-                || $this->getOption('refresh-device'))
-        ) {
-            $devices = shell_exec(static::LIST_DEVICES_CMD);
-
-            if (is_string($devices)) {
-                $matchingDevices = preg_grep(
-                    '/' . $this->settings_['device'] . '/',
-                    explode(' ', $devices)
-                );
-
-                if ($matchingDevices) {
-                    $this->state_['device'] = reset($matchingDevices);
-                }
-            }
-        }
-    }
-
-    protected function saveState(): void
-    {
-        file_put_contents($this->stateFile_, json_encode($this->state_));
-    }
-
-    protected function createExampleIniFile(): string
-    {
-        return <<<EOT
-[settings]
-
-# Default value for dc:language
-#dc:language=en
-
-# Default value for dc:type
-#dc:type=Text
-
-# If true, automatically create PDF for for multipage documents
-#autopdf=true
-
-# Choose the first device matching this regexp from the output of
-# scanimage -L. The chosen device is stored in a state file and re-used in the
-# next invocation.
-#device=genesys
-
-[devices]
-
-# Define device aliases, which can be used in the --device option.
-#epkowa=epkowa:net:192.168.1.42:1865
-EOT;
     }
 }
