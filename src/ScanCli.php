@@ -257,12 +257,9 @@ EOT;
             $batchSize = $this->getOption('batch-increment')
                 || $this->getOption('batch-start')
                 || $this->getOption('even')
-                || $this->getOption('odd');
-
-            if (!$batchSize) {
-                /* If --batch not given, scan one page. */
-                $batchSize = 1;
-            }
+                || $this->getOption('odd')
+                ? null
+                : 1;
         }
 
         $filenamePrefix = $scanOnly && $this->getOperand('file')
