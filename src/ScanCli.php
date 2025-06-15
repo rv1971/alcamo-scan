@@ -3,14 +3,12 @@
 namespace alcamo\scan;
 
 use alcamo\cli\AbstractCli;
-use alcamo\conf\{HasConfTrait, Loader, XdgFileFinder};
+use alcamo\conf\{HasConfTrait, Loader, IniFileParser, XdgFileFinder};
 use alcamo\rdfa\RdfaData;
 use GetOpt\{ArgumentException, GetOpt, Operand};
 
 class ScanCli extends AbstractCli
 {
-    use HasConfTrait;
-
     public const DEFAULT_FORMAT = 'jpeg';
 
     public const OPTIONS =
@@ -86,6 +84,11 @@ class ScanCli extends AbstractCli
                 'File format. [' . self::DEFAULT_FORMAT . ']',
                 null,
                 Validator::class . '::validateFormat'
+            ],
+            'create-example-ini' => [
+                null,
+                GetOpt::NO_ARGUMENT,
+                'Create an example ini file and print it to the standard output.',
             ],
             'geometry' => [
                 'g',
@@ -187,24 +190,26 @@ class ScanCli extends AbstractCli
     ];
 
     public const DESCRIPTION = <<<'EOT'
-Reads defaults from $XDG_CONFIG_HOME/alcamo/scan.ini:
-* dc:language  Value for dc:language.
-* dc:type      Value for dc:type.
-* autopdf      If true, automatically create PDF for for multipage documents.
-* device       Use the device matching this regexp. The chosen device is stored
-               in a state file and re-used in the next invocation.
+Reads settings and device aliases from $XDG_CONFIG_HOME/alcamo/scan.ini.
 EOT;
 
     public const LIST_DEVICES_CMD = 'scanimage -f "%d "';
 
+    private $conf_;
+    private $settings_;
     private $stateFile_; ///< string
     private $state_;     ///< array
 
     public function innerRun(): int
     {
-        $confLoader = new Loader();
+        if ($this->getOption('create-example-ini')) {
+            echo $this->createExampleIniFile();
+            exit(0);
+        }
 
-        $this->conf_ = $confLoader->load('scan.ini');
+        $this->conf_ = (new Loader(new IniFileParser(true)))->load('scan.ini');
+
+        $this->settings_ = $this->conf_['settings'] ?? null;
 
         $this->loadState();
 
@@ -241,6 +246,11 @@ EOT;
         $device = $this->getOption('device')
             ?? getenv('SANE_DEFAULT_DEVICE')
             ?? $this->state_['device'];
+
+        if (isset($this->conf_[$device])) {
+            $settings = $this->conf_[$device];
+            $device = $settings['name'];
+        }
 
         /* A number of options imply --batch */
         if ($this->getOption('batch')) {
@@ -356,7 +366,7 @@ EOT;
                     $createPdf = true;
                     break;
 
-                case $this->conf_['autopdf'] == 'true':
+                case $this->settings_['autopdf'] == 'true':
                     $createPdf = $batchSize != 1;
                     break;
 
@@ -371,10 +381,10 @@ EOT;
                         'dc:creator'   => $this->getOption('creator'),
                         'dc:language'
                         => $this->getOption('language')
-                        ?? $this->conf_['dc:language'],
+                        ?? $this->settings_['dc:language'],
                         'dc:publisher' => $this->getOption('publisher'),
-                        'dc:type'
-                        => $this->getOption('type') ?? $this->conf_['dc:type']
+                        'dc:type' => $this->getOption('type')
+                        ?? $this->settings_['dc:type']
                     ]
                 ),
                 $dates,
@@ -417,7 +427,7 @@ EOT;
         }
 
         if (
-            isset($this->conf_['device'])
+            isset($this->settings_['device'])
             && (!isset($this->state_['device'])
                 || $this->getOption('refresh-device'))
         ) {
@@ -425,7 +435,7 @@ EOT;
 
             if (is_string($devices)) {
                 $matchingDevices = preg_grep(
-                    '/' . $this->conf_['device'] . '/',
+                    '/' . $this->settings_['device'] . '/',
                     explode(' ', $devices)
                 );
 
@@ -439,5 +449,31 @@ EOT;
     protected function saveState(): void
     {
         file_put_contents($this->stateFile_, json_encode($this->state_));
+    }
+
+    protected function createExampleIniFile(): string
+    {
+        return <<<EOT
+[settings]
+
+# Default value for dc:language
+#dc:language=en
+
+# Default value for dc:type
+#dc:type=Text
+
+# If true, automatically create PDF for for multipage documents
+#autopdf=true
+
+# Choose the first device matching this regexp from the output of
+# scanimage -L. The chosen device is stored in a state file and re-used in the
+# next invocation.
+#device=genesys
+
+[devices]
+
+# Define device aliases, which can be used in the --device option.
+#epkowa=epkowa:net:192.168.1.42:1865
+EOT;
     }
 }
