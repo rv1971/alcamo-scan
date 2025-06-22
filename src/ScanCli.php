@@ -41,13 +41,6 @@ class ScanCli extends AbstractCli
                 'count',
                 Validator::class . '::validatePageNumberIncrement'
             ],
-            'combine' => [
-                null,
-                GetOpt::NO_ARGUMENT,
-                'Instead of creating the cartesian product of the lists of '
-                . 'meta data, combine them. All meta data options with more '
-                . 'than one entry must have the same length.'
-            ],
             'coverage' => [
                 'a',
                 GetOpt::REQUIRED_ARGUMENT,
@@ -276,13 +269,7 @@ EOT;
             ? explode(',', $this->getOption('coverage'))
             : [ null ];
 
-        if ($this->getOption('combine')) {
-            if (!isset($batchSize)) {
-                throw new ArgumentException(
-                    '--batch with value must be given with --combine'
-                );
-            }
-
+        if (isset($batchSize)) {
             $listSize = max(count($dates), count($titles), count($coverages));
 
             if (
@@ -296,9 +283,6 @@ EOT;
             }
 
             $totalPageCount = $listSize * $batchSize;
-        } elseif (isset($batchSize)) {
-            $totalPageCount =
-                count($dates) * count($titles) * count($coverages) * $batchSize;
         } else {
             if (count($dates) > 1) {
                 throw new ArgumentException(
@@ -376,7 +360,6 @@ EOT;
                 $titles,
                 $coverages,
                 $batchSize,
-                $this->getOption('combine') ?? false,
                 $filenames,
                 $this->getOption('rotate') ? 90 : null,
                 $batchStart,

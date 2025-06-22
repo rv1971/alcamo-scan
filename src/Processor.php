@@ -33,7 +33,6 @@ class Processor
     private $titles_;           ///< array
     private $coverages_;        ///< array
     private $batchSize_;        ///< array
-    private $combineMode_;      ///< bool
     private $filenames_;        ///< array
     private $rotateDegrees_;    ///< ?int
     private $batchStart_;       ///< ?int
@@ -46,7 +45,6 @@ class Processor
         array $titles,
         array $coverages,
         ?int $batchSize,
-        bool $combineMode,
         array $filenames,
         ?int $rotateDegrees,
         ?int $batchStart,
@@ -63,8 +61,6 @@ class Processor
 
         $this->batchSize_ = $batchSize;
 
-        $this->combineMode_ = $combineMode;
-
         $this->filenames_ = $filenames;
 
         $this->rotateDegrees_ = $rotateDegrees;
@@ -76,16 +72,11 @@ class Processor
         $this->progressReporter_ = $progressReporter;
 
         if (isset($this->batchSize_)) {
-            $requiredFileCount = $this->combineMode_
-                ? max(
-                    count($this->dates_),
-                    count($this->titles_),
-                    count($this->coverages_)
-                ) * $this->batchSize_
-                : count($this->dates_)
-                * count($this->titles_)
-                * count($this->coverages_)
-                * $this->batchSize_;
+            $requiredFileCount =  max(
+                count($this->dates_),
+                count($this->titles_),
+                count($this->coverages_)
+            ) * $this->batchSize_;
 
             if ($requiredFileCount != count($this->filenames_)) {
                 throw (new DataValidationFailed())->setMessageContext(
@@ -101,15 +92,12 @@ class Processor
 
     public function run(): void
     {
-        if ($this->combineMode_) {
+        if (isset($this->batchSize_)) {
             $this->runCombineMode();
-        } elseif (isset($this->batchSize_)) {
-            $this->runCartesianProductMode();
         } else {
             $this->runSingleDocumentMode();
         }
     }
-
 
     protected function runCombineMode(): void
     {
@@ -152,36 +140,6 @@ class Processor
             );
 
             $fileNo += $this->batchSize_;
-        }
-    }
-
-    protected function runCartesianProductMode(): void
-    {
-        $fileNo = $this->batchStart_;
-
-        foreach ($this->dates_ as $date) {
-            foreach ($this->titles_ as $title) {
-                foreach ($this->coverages_ as $coverage) {
-                    $this->processBatch(
-                        $this->fixedRdfaData_->replace(
-                            RdfaData::newFromIterable(
-                                [
-                                    'dc:coverage' => $coverage,
-                                    'dc:date' => $date,
-                                    'dc:title' => $title
-                                ]
-                            )
-                        ),
-                        array_slice(
-                            $this->filenames_,
-                            $fileNo,
-                            $this->batchSize_
-                        )
-                    );
-
-                    $fileNo += $this->batchSize_;
-                }
-            }
         }
     }
 
