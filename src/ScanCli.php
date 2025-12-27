@@ -157,6 +157,11 @@ class ScanCli extends AbstractCli
                 GetOpt::NO_ARGUMENT,
                 'Only do raw scan.'
             ],
+            'source' => [
+                null,
+                GetOpt::REQUIRED_ARGUMENT,
+                'SANE source.'
+            ],
             'title' => [
                 't',
                 GetOpt::REQUIRED_ARGUMENT,
@@ -207,7 +212,8 @@ EOT;
                 'format'     => $this->getOption('format'),
                 'geometry'   => $this->getOption('geometry'),
                 'mode'       => $this->getOption('mode'),
-                'resolution' => $this->getOption('resolution')
+                'resolution' => $this->getOption('resolution'),
+                'source'     => $this->getOption('source')
             ]
         );
 
@@ -321,7 +327,7 @@ EOT;
         if (!$scanOnly) {
             $filenames = $this->getOperand('file')
                 ?: glob(
-                    "$filenamePrefix.[0-9][0-9].{$device['format']}",
+                    "$filenamePrefix.[0-9][0-9][0-9][0-9].{$device['format']}",
                     GLOB_ERR
                 );
 

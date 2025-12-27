@@ -56,7 +56,7 @@ class Scanner
             [$this->device_['mode']];
 
         $filenameFormat =
-            "{$this->filenamePrefix_}.%02d.{$this->device_['format']}";
+            "{$this->filenamePrefix_}.%04d.{$this->device_['format']}";
 
         $cmdLine = "scanimage "
             . "--device-name={$this->device_['name']} "
@@ -94,6 +94,10 @@ class Scanner
 
             default:
                 $cmdLine .= "--resolution={$this->device_['resolution']} ";
+        }
+
+        if (isset($this->device_['source'])) {
+            $cmdLine .= "--source='{$this->device_['source']}' ";
         }
 
         if ($this->device_['adf']) {

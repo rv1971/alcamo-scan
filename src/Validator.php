@@ -14,7 +14,7 @@ class Validator
 
     public static function validatePageNumber($value): bool
     {
-        return is_numeric($value) && $value > 0 && $value < 100;
+        return is_numeric($value) && $value > 0 && $value < 10000;
     }
 
     public static function validatePageNumberIncrement($value): bool

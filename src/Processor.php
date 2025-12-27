@@ -208,7 +208,7 @@ class Processor
             $fileCount = count($filenames);
 
             $filenameFormat = $this->createBasename($rdfaData)
-            . ($fileCount > 1 ? '.%02.d' : '');
+            . ($fileCount > 1 ? '.%04.d' : '');
 
             for ($i = 0; $i < $fileCount; $i++) {
                 $suffix = strrchr($filenames[$i], '.');

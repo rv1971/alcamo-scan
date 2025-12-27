@@ -36,6 +36,9 @@ class DeviceSettingsSanitizer extends Sanitizer
             'int',
             'min' => 50,
             'max' => 4800
+        ],
+        'source' => [
+            'string'
         ]
     ];
 
