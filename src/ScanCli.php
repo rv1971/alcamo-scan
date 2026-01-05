@@ -355,11 +355,11 @@ EOT;
             $processor = new Processor(
                 RdfaData::newFromIterable(
                     [
-                        'dc:audience'  => $this->getOption('audience'),
-                        'dc:creator'   => $this->getOption('creator'),
-                        'dc:language'  => $settings['dc:language'],
-                        'dc:publisher' => $this->getOption('publisher'),
-                        'dc:type'      => $settings['dc:type']
+                        [ 'dc:audience',  $this->getOption('audience') ],
+                        [ 'dc:creator',   $this->getOption('creator') ],
+                        [ 'dc:language',  $settings['dc:language'] ],
+                        [ 'dc:publisher', $this->getOption('publisher') ],
+                        [ 'dc:type',      $settings['dc:type'] ]
                     ]
                 ),
                 $dates,

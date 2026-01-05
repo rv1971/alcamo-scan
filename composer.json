@@ -6,8 +6,8 @@
     "require": {
         "php": "7.3 - 8.0",
         "alcamo/cli": "^0.5",
-        "alcamo/conf": "^0.5",
-        "alcamo/rdfa": "^0.8",
+        "alcamo/conf": "^0.6",
+        "alcamo/rdfa": "^0.10",
         "alcamo/sanitize": "^0.1"
     },
     "autoload": {

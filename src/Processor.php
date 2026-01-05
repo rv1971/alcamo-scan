@@ -126,9 +126,9 @@ class Processor
                 $this->fixedRdfaData_->replace(
                     RdfaData::newFromIterable(
                         [
-                            'dc:coverage' => $this->coverages_[$i],
-                            'dc:date' => $this->dates_[$i],
-                            'dc:title' => $this->titles_[$i]
+                            [ 'dc:coverage', $this->coverages_[$i] ],
+                            [ 'dc:date', $this->dates_[$i] ],
+                            [ 'dc:title', $this->titles_[$i] ]
                         ]
                     )
                 ),
@@ -149,9 +149,9 @@ class Processor
             $this->fixedRdfaData_->replace(
                 RdfaData::newFromIterable(
                     [
-                        'dc:coverage' => $this->coverages_[0],
-                        'dc:date' => $this->dates_[0],
-                        'dc:title' => $this->titles_[0]
+                        [ 'dc:coverage', $this->coverages_[0] ],
+                        [ 'dc:date', $this->dates_[0] ],
+                        [ 'dc:title', $this->titles_[0] ]
                     ]
                 )
             ),

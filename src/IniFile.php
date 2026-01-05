@@ -12,7 +12,7 @@ class IniFile extends ReadonlyCollection
     public static function newFromFilename(?string $filename = null): self
     {
         return new static(
-            (new Loader(new IniFileParser(true)))
+            (new Loader(null, new IniFileParser(true)))
                 ->load($filename ?? static::DEFAULT_FILENAME)
         );
     }

@@ -37,7 +37,8 @@ class DeviceSettingsSanitizerTest extends TestCase
                     'adf' => false,
                     'bufferSize' => 32,
                     'format' => 'jpeg',
-                    'mode' => 'color'
+                    'mode' => 'color',
+                    'source' => null
                 ]
             ],
             [
@@ -51,7 +52,8 @@ class DeviceSettingsSanitizerTest extends TestCase
                     'bufferSize' => 32,
                     'format' => 'jpeg',
                     'mode' => 'color',
-                    'resolution' => 300
+                    'resolution' => 300,
+                    'source' => null
                 ]
             ],
             [
@@ -66,7 +68,8 @@ class DeviceSettingsSanitizerTest extends TestCase
                     'bufferSize' => 32,
                     'format' => 'jpeg',
                     'mode' => 'color',
-                    'resolution' => 300
+                    'resolution' => 300,
+                    'source' => null
                 ]
             ]
         ];
