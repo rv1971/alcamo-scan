@@ -7,20 +7,7 @@ use alcamo\exception\ProcessFailed;
 
 class Scanner
 {
-    public const MODE_MAP = [
-        'epkowa' => [
-            'color'  => 'Color',
-            'gray'   => 'Gray',
-            'binary' => 'Binary'
-        ],
-        '*' => [
-            'color'  => 'Color',
-            'gray'   => 'Gray',
-            'binary' => 'Lineart'
-        ]
-    ];
-
-    private $device_;           ///< device
+    private $conf_;             ///< ConfDocument
     private $batchStart_;       ///< ?int
     private $batchIncrement_;   ///< ?int
     private $filenamePrefix_;   ///< string
@@ -28,14 +15,14 @@ class Scanner
     private $totalPageCount_;   ///< ?int
 
     public function __construct(
-        Device $device,
+        ConfDocument $conf,
         ?int $batchStart,
         ?int $batchIncrement,
         string $filenamePrefix,
         ProgressReporter $progressReporter,
         ?int $totalPageCount
     ) {
-        $this->device_ = $device;
+        $this->conf_ = $conf;
 
         $this->batchStart_ = $batchStart;
 
@@ -50,21 +37,50 @@ class Scanner
 
     public function run(): void
     {
-        $backend = explode(':', $this->device_['name'], 2)[0];
-
-        $backendMode = (self::MODE_MAP[$backend] ?? self::MODE_MAP['*'])
-            [$this->device_['mode']];
-
         $filenameFormat =
-            "{$this->filenamePrefix_}.%04d.{$this->device_['format']}";
+            "{$this->filenamePrefix_}.%04d.{$this->conf_->format}";
 
         $cmdLine = "scanimage "
-            . "--device-name={$this->device_['name']} "
-            . "--format={$this->device_['format']} "
+            . "--device-name={$this->conf_->name} "
+            . "--format={$this->conf_->format} "
             . "--batch=$filenameFormat "
-            . '-p '
-            . "--mode=$backendMode "
-            . "--buffer-size={$this->device_['bufferSize']} ";
+            . '--progress ';
+
+        if (isset($this->conf_->bufferSize)) {
+            $cmdLine .= "--buffer-size={$this->conf_->bufferSize} ";
+        }
+
+        if (isset($this->conf_->mode)) {
+            $cmdLine .= "--mode={$this->conf_->backendMode} ";
+        }
+
+        if (isset($this->conf_->geometry)) {
+            $geometry = $this->conf_->geometry->getValue();
+
+            $cmdLine .= "-x {$geometry->x} -y {$geometry->y} ";
+
+            if (isset($geometry->l)) {
+                $cmdLine .= "-l {$geometry->l} -t {$geometry->t} ";
+            }
+        }
+
+        if (isset($this->conf_->resolution)) {
+            $cmdLine .= $this->conf_->supportsXYResolution
+                ? ("--x-resolution={$this->conf_->resolution} "
+                   . "--y-resolution={$this->conf_->resolution} ")
+                : "--resolution={$this->conf_->resolution} ";
+        }
+
+        if (isset($this->conf_->backendSource)) {
+            $cmdLine .= "--source='{$this->conf_->backendSource}' ";
+            $isAdf = $this->conf_->backendSource->isAdf;
+        } else {
+            $isAdf = false;
+        }
+
+        if (!$isAdf && $this->totalPageCount_ !== 1) {
+            $cmdLine .= "--batch-prompt ";
+        }
 
         if (isset($this->totalPageCount_)) {
             $cmdLine .= "--batch-count={$this->totalPageCount_} ";
@@ -76,34 +92,6 @@ class Scanner
 
         if (isset($this->batchIncrement_)) {
             $cmdLine .= "--batch-increment={$this->batchIncrement_} ";
-        }
-
-        $geometry = preg_split('/[x\+]/', $this->device_['geometry']);
-
-        $cmdLine .= "-x {$geometry[0]} -y {$geometry[1]} ";
-
-        if (isset($geometry[2])) {
-            $cmdLine .= "-l {$geometry[2]} -t {$geometry[3]} ";
-        }
-
-        switch ($backend) {
-            case 'epkowa':
-                $cmdLine .= "--x-resolution={$this->device_['resolution']} "
-                    . "--y-resolution={$this->device_['resolution']} ";
-                break;
-
-            default:
-                $cmdLine .= "--resolution={$this->device_['resolution']} ";
-        }
-
-        if (isset($this->device_['source'])) {
-            $cmdLine .= "--source='{$this->device_['source']}' ";
-        }
-
-        if ($this->device_['adf']) {
-            $cmdLine .= "--source='Automatic Document Feeder' ";
-        } elseif ($this->totalPageCount_ !== 1) {
-            $cmdLine .= "--batch-prompt ";
         }
 
         $this->progressReporter_->write($cmdLine, 1);

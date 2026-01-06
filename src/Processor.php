@@ -166,9 +166,9 @@ class Processor
         foreach (static::BASENAME_PROPS as $curie) {
             if (isset($rdfaData[$curie])) {
                 if ($rdfaData[$curie] instanceof AbstractDateTimeStmt) {
-                    $props[] = $rdfaData[$curie]->format('Y-m-d');
+                    $props[] = $rdfaData[$curie]->first()->format('Y-m-d');
                 } else {
-                    $props[] = $rdfaData[$curie];
+                    $props[] = $rdfaData[$curie]->first();
                 }
             }
         }
@@ -251,7 +251,9 @@ class Processor
             . "-o $outfilename "
             . '-HostComputer=' . getenv('HOSTNAME') . ' ';
 
-        foreach ($rdfaData as $curie => $value) {
+        foreach ($rdfaData as $curie => $values) {
+            $value = $values->first();
+
             if (isset(static::EXIFTOOL_MAP[$curie])) {
                 if ($value instanceof AbstractDateTimeStmt) {
                     $value = $value->format('Y-m-d');

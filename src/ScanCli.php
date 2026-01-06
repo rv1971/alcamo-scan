@@ -3,6 +3,8 @@
 namespace alcamo\scan;
 
 use alcamo\cli\AbstractCli;
+use alcamo\conf\Loader;
+use alcamo\dom\DocumentValidator;
 use alcamo\rdfa\RdfaData;
 use GetOpt\{ArgumentException, GetOpt, Operand};
 
@@ -10,11 +12,6 @@ class ScanCli extends AbstractCli
 {
     public const OPTIONS =
         [
-            'adf' => [
-                null,
-                GetOpt::NO_ARGUMENT,
-                'Use automatic document feeder.'
-            ],
             'audience' => [
                 'u',
                 GetOpt::REQUIRED_ARGUMENT,
@@ -73,22 +70,12 @@ class ScanCli extends AbstractCli
             'format' => [
                 'f',
                 GetOpt::REQUIRED_ARGUMENT,
-                'File format. [' .
-                DeviceSettingsSanitizer::RULES['format']['default']
-                . ']',
-                null
-            ],
-            'create-example-ini' => [
-                null,
-                GetOpt::NO_ARGUMENT,
-                'Create an example ini file and print it to the standard output.',
+                'File format.'
             ],
             'geometry' => [
                 'g',
                 GetOpt::REQUIRED_ARGUMENT,
-                'Scan area geometry. [' .
-                DeviceSettingsSanitizer::RULES['geometry']['default']
-                . ']',
+                'Scan area geometry.',
                 'w>x<h>[+<l>+<t>]|<name'
             ],
             'language' => [
@@ -99,9 +86,7 @@ class ScanCli extends AbstractCli
             'mode' => [
                 null,
                 GetOpt::REQUIRED_ARGUMENT,
-                'Scan mode: color|gray|binary. [' .
-                DeviceSettingsSanitizer::RULES['mode']['default']
-                . ']',
+                'Scan mode: color|gray|binary.',
                 'mode'
             ],
             'no-pdf' => [
@@ -137,9 +122,7 @@ class ScanCli extends AbstractCli
             'resolution' => [
                 'r',
                 GetOpt::REQUIRED_ARGUMENT,
-                'Resolution. [' .
-                DeviceSettingsSanitizer::RULES['resolution']['default']
-                . ']',
+                'Resolution.',
                 'dpi'
             ],
             'reverse' => [
@@ -160,7 +143,7 @@ class ScanCli extends AbstractCli
             'source' => [
                 null,
                 GetOpt::REQUIRED_ARGUMENT,
-                'SANE source.'
+                'Source ID as specified in the config file.'
             ],
             'title' => [
                 't',
@@ -181,41 +164,37 @@ class ScanCli extends AbstractCli
     ];
 
     public const DESCRIPTION = <<<'EOT'
-Reads settings and device aliases from $XDG_CONFIG_HOME/alcamo/scan.ini.
+Reads settings and device aliases from $XDG_CONFIG_HOME/alcamo/scan-conf.xml.
 EOT;
+
+    public const CONF_FILENAME = 'scan-conf.xml';
+
+    protected const CONF_OPTIONS = [
+        'language'   => 'dc:language',
+        'type'       => 'dc:type',
+        'format'     => 'format',
+        'geometry'   => 'geometry',
+        'mode'       => 'mode',
+        'resolution' => 'resolution',
+        'source'     => 'source'
+    ];
 
     public function innerRun(): int
     {
-        $iniFile = IniFile::newFromFilename();
+        $conf = (new Loader(null, new XmlFileParser()))
+            ->load(static::CONF_FILENAME);
 
-        if ($this->getOption('create-example-ini')) {
-            echo $iniFile->createExample();
-            exit(0);
-        }
-
-        $settings = new Settings($iniFile['settings'] ?? []);
-
-        $settings->addSettings(
-            [
-                'dc:language' => $this->getOption('language'),
-                'dc:type'     => $this->getOption('type')
-            ]
-        );
-
-        $device = $iniFile->getDevice(
+        $conf->chooseDevice(
             $this->getOption('device') ?? getenv('SANE_DEFAULT_DEVICE')
         );
 
-        $device->addSettings(
-            [
-                'adf'        => $this->getOption('adf'),
-                'format'     => $this->getOption('format'),
-                'geometry'   => $this->getOption('geometry'),
-                'mode'       => $this->getOption('mode'),
-                'resolution' => $this->getOption('resolution'),
-                'source'     => $this->getOption('source')
-            ]
-        );
+        foreach (static::CONF_OPTIONS as $cmdLineOption => $option) {
+            if ($this->getOption($cmdLineOption)) {
+                $conf->$option = $this->getOption($cmdLineOption);
+            }
+        }
+
+        (new DocumentValidator())->validate($conf);
 
         $scanOnly = $this->getOption('scan-only')
             || $this->getOption('even') || $this->getOption('odd');
@@ -284,7 +263,7 @@ EOT;
                 || (count($coverages) > 1 && count($coverages) != $listSize)
             ) {
                 throw new ArgumentException(
-                    'With --combine all lists of length > 1 must have the same size'
+                    'All lists of length > 1 must have the same size'
                 );
             }
 
@@ -313,7 +292,7 @@ EOT;
 
         if (!$this->getOption('process-only')) {
             $scanner = new Scanner(
-                $device,
+                $conf,
                 $batchStart,
                 $batchIncrement,
                 $filenamePrefix,
@@ -327,7 +306,7 @@ EOT;
         if (!$scanOnly) {
             $filenames = $this->getOperand('file')
                 ?: glob(
-                    "$filenamePrefix.[0-9][0-9][0-9][0-9].{$device['format']}",
+                    "$filenamePrefix.[0-9][0-9][0-9][0-9].{$conf->format}",
                     GLOB_ERR
                 );
 
@@ -344,7 +323,7 @@ EOT;
                     $createPdf = true;
                     break;
 
-                case $settings['autopdf'] == 'true':
+                case $conf->autopdf:
                     $createPdf = $batchSize != 1;
                     break;
 
@@ -357,9 +336,9 @@ EOT;
                     [
                         [ 'dc:audience',  $this->getOption('audience') ],
                         [ 'dc:creator',   $this->getOption('creator') ],
-                        [ 'dc:language',  $settings['dc:language'] ],
+                        [ 'dc:language',  $conf->{'dc:language'} ],
                         [ 'dc:publisher', $this->getOption('publisher') ],
-                        [ 'dc:type',      $settings['dc:type'] ]
+                        [ 'dc:type',      $conf->{'dc:type'} ]
                     ]
                 ),
                 $dates,
