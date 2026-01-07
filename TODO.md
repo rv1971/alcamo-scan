@@ -1,11 +1,3 @@
-# review configuration
-
-* show defaults from ConfigDocument in help message
-  * derive custom Help class, overriding renderOptions
-  * see http://getopt-php.github.io/getopt-php/help.html
-* add example scan-config.xml to package
-* automatically store example XML in config location of no config file found?
-
 # alcamo-scan
 
 * add config option scan-format

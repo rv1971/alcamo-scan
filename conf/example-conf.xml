@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+
+<conf
+    xmlns="https://github.com/rv1971/alcamo-scan/conf"
+    xmlns:dc="http://purl.org/dc/terms/"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/rv1971/alcamo-scan/conf file:///home/rizzardo/src/alcamo-scan/xsd/scan-conf.xsd">
+  <geometries>
+    <geometry id="a4">210x297</geometry>
+    <geometry id="a5">148x210</geometry>
+    <geometry id="a5r">210x148</geometry>
+    <geometry id="a6">105x148</geometry>
+    <geometry id="a6r">148x105</geometry>
+    <geometry id="a7">74x105</geometry>
+    <geometry id="a7r">105x74</geometry>
+  </geometries>
+
+  <defaults
+      dc:language="en"
+      dc:type="Text"
+      autopdf="true"
+      bufferSize="64"
+      format="jpeg"
+      mode="color"
+      resolution="150"/>
+
+  <device
+      xsi:type="NetDevice"
+      id="epkowa"
+      name="epkowa:net:192.168.178.42:1865"
+      source="adf"
+      supportsXYResolution="true">
+    <modes>
+      <mode id="binary">Binary</mode>
+      <mode id="color">Color</mode>
+      <mode id="gray">Gray</mode>
+    </modes>
+
+    <sources>
+      <source id="adf" isAdf="true">Automatic Document Feeder</source>
+      <source id="flatbed">Flatbed</source>
+    </sources>
+  </device>
+
+  <device
+      xsi:type="UsbDevice"
+      id="scanjet"
+      usbId="03f0:0a01"
+      backend="genesys">
+    <modes>
+      <mode id="binary">Lineart</mode>
+      <mode id="color">Color</mode>
+      <mode id="gray">Gray</mode>
+    </modes>
+  </device>
+</conf>

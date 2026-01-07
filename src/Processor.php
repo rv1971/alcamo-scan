@@ -2,7 +2,7 @@
 
 namespace alcamo\scan;
 
-use alcamo\cli\ProgressReporter;
+use alcamo\cli\Logger;
 use alcamo\exception\{DataValidationFailed, ProcessFailed};
 use alcamo\rdfa\{AbstractDateTimeStmt, RdfaData};
 
@@ -28,6 +28,7 @@ class Processor
 
     private const BACKGROUND = '#00000000';
 
+    private $logger_;           ///< Logger
     private $fixedRdfaData_;    ///< RdfaData
     private $dates_;            ///< array
     private $titles_;           ///< array
@@ -37,9 +38,9 @@ class Processor
     private $rotateDegrees_;    ///< ?int
     private $batchStart_;       ///< ?int
     private $createPdf_;        ///< bool
-    private $progressReporter_; ///< ProgressReporter
 
     public function __construct(
+        Logger $logger,
         RdfaData $fixedRdfaData,
         array $dates,
         array $titles,
@@ -48,9 +49,10 @@ class Processor
         array $filenames,
         ?int $rotateDegrees,
         ?int $batchStart,
-        bool $createPdf,
-        ProgressReporter $progressReporter
+        bool $createPdf
     ) {
+        $this->logger_ = $logger;
+
         $this->fixedRdfaData_ = $fixedRdfaData;
 
         $this->dates_ = $dates;
@@ -68,8 +70,6 @@ class Processor
         $this->batchStart_ = $batchStart;
 
         $this->createPdf_ = $createPdf;
-
-        $this->progressReporter_ = $progressReporter;
 
         if (isset($this->batchSize_)) {
             $requiredFileCount =  max(
@@ -245,7 +245,7 @@ class Processor
         string $infilename,
         string $outfilename
     ): void {
-        $this->progressReporter_->write("Writing $outfilename ...");
+        $this->logger_->notice("Writing $outfilename ...");
 
         $cmdLine = 'exiftool '
             . "-o $outfilename "
@@ -266,7 +266,7 @@ class Processor
 
         $cmdLine .= $infilename;
 
-        $this->progressReporter_->write($cmdLine, 1);
+        $this->logger_->info($cmdLine);
 
         if (passthru($cmdLine, $exitCode) === false) {
             throw (new ProcessFailed())->setMessageContext(

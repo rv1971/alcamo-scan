@@ -24,7 +24,7 @@ class ConfDocument extends Document
         $a = preg_split('/[x\+]/', $value);
 
         return (object)array_combine(
-            isset($a[2]) ? [ 'x', 'y', 'l', 't' ] : [ 'x', 'y' ],
+            isset($a[2]) ? [ 'w', 'h', 'l', 't' ] : [ 'w', 'h' ],
             $a
         );
     }

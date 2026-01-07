@@ -2,9 +2,10 @@
 
 namespace alcamo\scan;
 
-use alcamo\cli\AbstractCli;
+use alcamo\cli\{AbstractCli, Logger};
 use alcamo\conf\Loader;
 use alcamo\dom\DocumentValidator;
+use alcamo\exception\WriteError;
 use alcamo\rdfa\RdfaData;
 use GetOpt\{ArgumentException, GetOpt, Operand};
 
@@ -169,6 +170,11 @@ EOT;
 
     public const CONF_FILENAME = 'scan-conf.xml';
 
+    protected const EXAMPLE_CONF_FILENAME =
+        __DIR__ . DIRECTORY_SEPARATOR . '..'
+        . DIRECTORY_SEPARATOR . 'conf'
+        . DIRECTORY_SEPARATOR . 'example-conf.xml';
+
     protected const CONF_OPTIONS = [
         'language'   => 'dc:language',
         'type'       => 'dc:type',
@@ -179,22 +185,59 @@ EOT;
         'source'     => 'source'
     ];
 
-    public function innerRun(): int
-    {
-        $conf = (new Loader(null, new XmlFileParser()))
-            ->load(static::CONF_FILENAME);
+    private $conf_; ///< ConfDocument
 
-        $conf->chooseDevice(
+    public function process($arguments = null)
+    {
+        parent::process($arguments);
+
+        $loader = new Loader(null, new XmlFileParser());
+
+        /** If there is no configuration file, copy the bundled example file
+         *  to the configuration home directory. */
+        if (!$loader->getFileFinder()->find(static::CONF_FILENAME)) {
+            $path = $loader->getFileFinder()->getDefaultDir()
+                . DIRECTORY_SEPARATOR . static::CONF_FILENAME;
+
+            if (!copy(static::EXAMPLE_CONF_FILENAME, $path)) {
+                throw (new WriteError())->setMessageContext(
+                    [
+                        'operation' =>
+                        "copy " . static::EXAMPLE_CONF_FILENAME . " to $path"
+                    ]
+                );
+            }
+
+            $this->getLogger()->notice("Created $path");
+        }
+
+        $this->conf_ = $loader->load(static::CONF_FILENAME);
+
+        $this->conf_->chooseDevice(
             $this->getOption('device') ?? getenv('SANE_DEFAULT_DEVICE')
         );
 
         foreach (static::CONF_OPTIONS as $cmdLineOption => $option) {
+            $getOptOption = $this->getOptionObject($cmdLineOption);
+
+            if (isset($this->conf_->$option)) {
+                $getOptOption->setDescription(
+                    $getOptOption->getDescription()
+                    . " [{$this->conf_->$option}]"
+                );
+            }
+        }
+    }
+
+    public function innerRun(): int
+    {
+        foreach (static::CONF_OPTIONS as $cmdLineOption => $option) {
             if ($this->getOption($cmdLineOption)) {
-                $conf->$option = $this->getOption($cmdLineOption);
+                $this->conf_->$option = $this->getOption($cmdLineOption);
             }
         }
 
-        (new DocumentValidator())->validate($conf);
+        (new DocumentValidator())->validate($this->conf_);
 
         $scanOnly = $this->getOption('scan-only')
             || $this->getOption('even') || $this->getOption('odd');
@@ -292,11 +335,11 @@ EOT;
 
         if (!$this->getOption('process-only')) {
             $scanner = new Scanner(
-                $conf,
+                $this->conf_,
+                $this->getLogger(),
                 $batchStart,
                 $batchIncrement,
                 $filenamePrefix,
-                $this->getProgressReporter(),
                 $totalPageCount
             );
 
@@ -306,7 +349,7 @@ EOT;
         if (!$scanOnly) {
             $filenames = $this->getOperand('file')
                 ?: glob(
-                    "$filenamePrefix.[0-9][0-9][0-9][0-9].{$conf->format}",
+                    "$filenamePrefix.[0-9][0-9][0-9][0-9].{$this->conf_->format}",
                     GLOB_ERR
                 );
 
@@ -323,7 +366,7 @@ EOT;
                     $createPdf = true;
                     break;
 
-                case $conf->autopdf:
+                case $this->conf_->autopdf:
                     $createPdf = $batchSize != 1;
                     break;
 
@@ -332,13 +375,14 @@ EOT;
             }
 
             $processor = new Processor(
+                $this->getLogger(),
                 RdfaData::newFromIterable(
                     [
                         [ 'dc:audience',  $this->getOption('audience') ],
                         [ 'dc:creator',   $this->getOption('creator') ],
-                        [ 'dc:language',  $conf->{'dc:language'} ],
+                        [ 'dc:language',  $this->conf_->{'dc:language'} ],
                         [ 'dc:publisher', $this->getOption('publisher') ],
-                        [ 'dc:type',      $conf->{'dc:type'} ]
+                        [ 'dc:type',      $this->conf_->{'dc:type'} ]
                     ]
                 ),
                 $dates,
@@ -349,7 +393,6 @@ EOT;
                 $this->getOption('rotate') ? 90 : null,
                 $batchStart,
                 $createPdf,
-                $this->getProgressReporter()
             );
 
             $processor->run();

@@ -2,35 +2,35 @@
 
 namespace alcamo\scan;
 
-use alcamo\cli\ProgressReporter;
+use alcamo\cli\Logger;
 use alcamo\exception\ProcessFailed;
 
 class Scanner
 {
     private $conf_;             ///< ConfDocument
+    private $logger_;           ///< Logger
     private $batchStart_;       ///< ?int
     private $batchIncrement_;   ///< ?int
     private $filenamePrefix_;   ///< string
-    private $progressReporter_; ///< ProgressReporter
     private $totalPageCount_;   ///< ?int
 
     public function __construct(
         ConfDocument $conf,
+        Logger $logger,
         ?int $batchStart,
         ?int $batchIncrement,
         string $filenamePrefix,
-        ProgressReporter $progressReporter,
         ?int $totalPageCount
     ) {
         $this->conf_ = $conf;
+
+        $this->logger_ = $logger;
 
         $this->batchStart_ = $batchStart;
 
         $this->batchIncrement_ = $batchIncrement;
 
         $this->filenamePrefix_ = $filenamePrefix;
-
-        $this->progressReporter_ = $progressReporter;
 
         $this->totalPageCount_ = $totalPageCount;
     }
@@ -57,7 +57,7 @@ class Scanner
         if (isset($this->conf_->geometry)) {
             $geometry = $this->conf_->geometry->getValue();
 
-            $cmdLine .= "-x {$geometry->x} -y {$geometry->y} ";
+            $cmdLine .= "-x {$geometry->w} -y {$geometry->h} ";
 
             if (isset($geometry->l)) {
                 $cmdLine .= "-l {$geometry->l} -t {$geometry->t} ";
@@ -94,7 +94,7 @@ class Scanner
             $cmdLine .= "--batch-increment={$this->batchIncrement_} ";
         }
 
-        $this->progressReporter_->write($cmdLine, 1);
+        $this->logger_->info($cmdLine);
 
         if (passthru($cmdLine, $exitCode) === false) {
             throw (new ProcessFailed())->setMessageContext(
