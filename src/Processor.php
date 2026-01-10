@@ -165,7 +165,10 @@ class Processor
 
         foreach (static::BASENAME_PROPS as $curie) {
             if (isset($rdfaData[$curie])) {
-                if ($rdfaData[$curie] instanceof AbstractDateTimeStmt) {
+                if (
+                    $rdfaData[$curie]->first()->getObject()
+                    instanceof \DateTimeInterface
+                ) {
                     $props[] = $rdfaData[$curie]->first()->format('Y-m-d');
                 } else {
                     $props[] = $rdfaData[$curie]->first();

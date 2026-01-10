@@ -5,6 +5,7 @@ namespace alcamo\scan;
 use alcamo\cli\{AbstractCli, Logger};
 use alcamo\conf\Loader;
 use alcamo\dom\DocumentValidator;
+use alcamo\dom\schema\FixedSchemaSimpleTypeValidator;
 use alcamo\exception\WriteError;
 use alcamo\rdfa\RdfaData;
 use GetOpt\{ArgumentException, GetOpt, Operand};
@@ -22,22 +23,19 @@ class ScanCli extends AbstractCli
                 'b',
                 GetOpt::OPTIONAL_ARGUMENT,
                 'Multiple pages per RDF tuple. [All available pages]',
-                'count',
-                Validator::class . '::validatePageNumber'
+                'count'
             ],
             'batch-start' => [
                 null,
                 GetOpt::REQUIRED_ARGUMENT,
                 'Start with this page number.',
-                'no',
-                Validator::class . '::validatePageNumber'
+                'no'
             ],
             'batch-increment' => [
                 null,
                 GetOpt::REQUIRED_ARGUMENT,
                 'Increment page numbers by this.',
-                'count',
-                Validator::class . '::validatePageNumberIncrement'
+                'count'
             ],
             'coverage' => [
                 'a',
@@ -54,8 +52,7 @@ class ScanCli extends AbstractCli
                 'd',
                 GetOpt::REQUIRED_ARGUMENT,
                 'Dublin core date values.',
-                'comma-separated',
-                Validator::class . '::validateDates'
+                'comma-separated'
             ],
             'device' => [
                 'D',
@@ -185,6 +182,12 @@ EOT;
         'source'     => 'source'
     ];
 
+    protected const OPTION_TYPES = [
+        'batch'           => [ ConfDocument::MAIN_NS, 'PageNo' ],
+        'batch-increment' => [ ConfDocument::MAIN_NS, 'PageNoIncrement' ],
+        'batch-start'     => [ ConfDocument::MAIN_NS, 'PageNo' ]
+    ];
+
     private $conf_; ///< ConfDocument
 
     public function process($arguments = null)
@@ -217,6 +220,7 @@ EOT;
             $this->getOption('device') ?? getenv('SANE_DEFAULT_DEVICE')
         );
 
+        /* Add defaults to option descriptions for help text. */
         foreach (static::CONF_OPTIONS as $cmdLineOption => $option) {
             $getOptOption = $this->getOptionObject($cmdLineOption);
 
@@ -232,12 +236,54 @@ EOT;
     public function innerRun(): int
     {
         foreach (static::CONF_OPTIONS as $cmdLineOption => $option) {
-            if ($this->getOption($cmdLineOption)) {
+            if ($this->getOption($cmdLineOption) !== null) {
                 $this->conf_->$option = $this->getOption($cmdLineOption);
             }
         }
 
         (new DocumentValidator())->validate($this->conf_);
+
+        $dates = $this->getOption('date')
+            ? explode(',', $this->getOption('date'))
+            : [ null ];
+
+        $titles = explode(',', $this->getOption('title'));
+
+        $coverages = $this->getOption('coverage')
+            ? explode(',', $this->getOption('coverage'))
+            : [ null ];
+
+        $valuesToValidate = [];
+
+        foreach (static::OPTION_TYPES as $optionName => $typeXName) {
+            if ($this->getOption($optionName) !== null) {
+                $valuesToValidate[$optionName] =
+                    [ $this->getOption($optionName), $typeXName ];
+            }
+        }
+
+        if ($this->getOption('date')) {
+            $valuesToValidate['date'] =
+                [ implode(' ', $dates), [ ConfDocument::MAIN_NS, 'Dates' ] ];
+        }
+
+        if ($valuesToValidate) {
+            $errors =
+                FixedSchemaSimpleTypeValidator::newFromSchema(
+                    $this->conf_->getSchema()
+                )
+                ->validate($valuesToValidate);
+
+            if ($errors) {
+                foreach ($errors as $optionName => $error) {
+                    $this->getLogger()->critical(
+                        "option --$optionName: $error"
+                    );
+                }
+
+                return 1;
+            }
+        }
 
         $scanOnly = $this->getOption('scan-only')
             || $this->getOption('even') || $this->getOption('odd');
@@ -270,7 +316,7 @@ EOT;
             ?? ($this->getOption('even') || $this->getOption('odd') ? 2 : null);
 
         /* A number of options imply --batch */
-        if ($this->getOption('batch')) {
+        if ($this->getOption('batch') !== null) {
             $batchSize = $this->getOption('batch') === 1
                 ? null
                 : (int)$this->getOption('batch');
@@ -282,20 +328,6 @@ EOT;
                 ? null
                 : 1;
         }
-
-        $filenamePrefix = $scanOnly && $this->getOperand('file')
-            ? $this->getOperand('file')[0]
-            : 'scan.' . date('Ydm\THis');
-
-        $dates = $this->getOption('date')
-            ? explode(',', $this->getOption('date'))
-            : [ null ];
-
-        $titles = explode(',', $this->getOption('title'));
-
-        $coverages = $this->getOption('coverage')
-            ? explode(',', $this->getOption('coverage'))
-            : [ null ];
 
         if (isset($batchSize)) {
             $listSize = max(count($dates), count($titles), count($coverages));
@@ -333,6 +365,10 @@ EOT;
             $totalPageCount = null;
         }
 
+        $filenamePrefix = $scanOnly && $this->getOperand('file')
+            ? $this->getOperand('file')[0]
+            : 'scan.' . date('Ydm\THis');
+
         if (!$this->getOption('process-only')) {
             $scanner = new Scanner(
                 $this->conf_,
@@ -353,7 +389,7 @@ EOT;
                     GLOB_ERR
                 );
 
-            if ($this->getOption('reverse')) {
+            if ($this->getOption('reverse') !== null) {
                 $filenames = array_reverse($filenames);
             }
 

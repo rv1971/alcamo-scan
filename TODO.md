@@ -1,5 +1,8 @@
 # alcamo-scan
 
+*  validate dates, page number and page number increment using a FixedSchemaSimpleTypeValidator
+   * split dates at comma and validate as list of dates
+
 * add config option scan-format
   * set to format by default if not specified
   * if differs from format, add coinversion step to processor
