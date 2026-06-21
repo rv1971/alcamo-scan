@@ -4,7 +4,8 @@ namespace alcamo\scan;
 
 use alcamo\cli\Logger;
 use alcamo\exception\{DataValidationFailed, ProcessFailed};
-use alcamo\rdfa\{AbstractDateTimeStmt, RdfaData};
+use alcamo\rdf_literal\DateLiteral;
+use alcamo\rdfa\RdfaData;
 
 class Processor
 {
@@ -127,7 +128,7 @@ class Processor
                     RdfaData::newFromIterable(
                         [
                             [ 'dc:coverage', $this->coverages_[$i] ],
-                            [ 'dc:date', $this->dates_[$i] ],
+                            [ 'dc:date', new DateLiteral($this->dates_[$i]) ],
                             [ 'dc:title', $this->titles_[$i] ]
                         ]
                     )
@@ -150,7 +151,7 @@ class Processor
                 RdfaData::newFromIterable(
                     [
                         [ 'dc:coverage', $this->coverages_[0] ],
-                        [ 'dc:date', $this->dates_[0] ],
+                        [ 'dc:date', new DateLiteral($this->dates_[0]) ],
                         [ 'dc:title', $this->titles_[0] ]
                     ]
                 )
@@ -165,14 +166,7 @@ class Processor
 
         foreach (static::BASENAME_PROPS as $curie) {
             if (isset($rdfaData[$curie])) {
-                if (
-                    $rdfaData[$curie]->first()->getObject()
-                    instanceof \DateTimeInterface
-                ) {
-                    $props[] = $rdfaData[$curie]->first()->format('Y-m-d');
-                } else {
-                    $props[] = $rdfaData[$curie]->first();
-                }
+                $props[] = $rdfaData[$curie]->first();
             }
         }
 
@@ -254,16 +248,9 @@ class Processor
             . "-o $outfilename "
             . '-HostComputer=' . getenv('HOSTNAME') . ' ';
 
-        foreach ($rdfaData as $curie => $values) {
-            $value = $values->first();
-
-            if (isset(static::EXIFTOOL_MAP[$curie])) {
-                if ($value instanceof AbstractDateTimeStmt) {
-                    $value = $value->format('Y-m-d');
-                }
-
-                $cmdLine .=
-                    '-' . static::EXIFTOOL_MAP[$curie] . "='$value' ";
+        foreach (static::EXIFTOOL_MAP as $curie => $prop) {
+            if (isset($rdfaData[$curie])) {
+                $cmdLine .= "-$prop='{$rdfaData[$curie]->first()}' ";
             }
         }
 
