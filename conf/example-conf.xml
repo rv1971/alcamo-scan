@@ -3,8 +3,7 @@
 <conf
     xmlns="https://github.com/rv1971/alcamo-scan/conf/"
     xmlns:dc="http://purl.org/dc/terms/"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://github.com/rv1971/alcamo-scan/conf/ https://github.com/rv1971/alcamo-scan/conf/scan-conf.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <geometries>
     <geometry id="a4">210x297</geometry>
     <geometry id="a5">148x210</geometry>

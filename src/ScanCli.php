@@ -200,15 +200,11 @@ EOT;
     {
         parent::process($arguments);
 
-        $this->conf_ =
-            (new Loader(null, new XmlFileParser(ConfDocument::class)))
-            ->createIfNotExistsAndLoad(
+        $this->conf_ = Loader::newFromDocumentClass(ConfDocument::class)
+            ->createFromXmlPathnameIfNotExistsAndLoad(
                 static::CONF_FILENAME,
-                str_replace(
-                    ConfDocument::MAIN_NS . 'scan-conf.xsd',
-                    (new FileUriFactory())->create(static::XSD_PATHNAME),
-                    file_get_contents(static::EXAMPLE_CONF_PATHNAME)
-                ),
+                static::EXAMPLE_CONF_PATHNAME,
+                static::XSD_PATHNAME,
                 $pathname
             );
 

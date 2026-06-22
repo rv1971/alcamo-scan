@@ -2,10 +2,10 @@
 
 namespace alcamo\scan;
 
-use alcamo\dom\psvi\Document;
+use alcamo\xml_conf\AbstractConfDocument;
 use alcamo\exception\{DataNotFound, ProcessFailed};
 
-class ConfDocument extends Document
+class ConfDocument extends AbstractConfDocument
 {
     public const MAIN_NS = 'https://github.com/rv1971/alcamo-scan/conf/';
 

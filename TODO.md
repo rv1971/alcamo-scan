@@ -1,9 +1,4 @@
 * create alcamo-xml-conf
-  * XmlFileParser
-  * loader
-    * using an XmlFileParser by default
-    * able to replace schema location in an example XML file, perhap
-      with dom means, than it could also insert dc:created
 * create and test separate class to Exiftool with a run() method
 
 

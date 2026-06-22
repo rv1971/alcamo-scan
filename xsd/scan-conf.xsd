@@ -8,9 +8,9 @@
     targetNamespace="https://github.com/rv1971/alcamo-scan/conf/"
     elementFormDefault="qualified"
     dc:title="Scan configuration"
-    dc:creator="RV1971 &lt;rv1971@web.de&gt;"
+    dc:creator="rv1971 &lt;rv1971@web.de&gt;"
     dc:created="2026-01-05"
-    dc:modified="2026-01-10"
+    dc:modified="2026-06-22"
     xml:lang="en">
   <xsd:import
       namespace="http://purl.org/dc/terms/"
@@ -260,6 +260,8 @@
           </xsd:keyref>
         </xsd:element>
       </xsd:sequence>
+
+      <xsd:attribute ref="dc:created" use="required"/>
     </xsd:complexType>
 
     <xsd:unique name="device-id">
