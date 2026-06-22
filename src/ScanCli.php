@@ -2,8 +2,8 @@
 
 namespace alcamo\scan;
 
-use alcamo\cli\{AbstractCli, Logger};
-use alcamo\xml_conf\{Loader, XmlFileParser};
+use alcamo\cli\AbstractCli;
+use alcamo\xml_conf\Loader;
 use alcamo\dom\DocumentValidator;
 use alcamo\dom\schema\FixedSchemaSimpleTypeValidator;
 use alcamo\exception\WriteError;

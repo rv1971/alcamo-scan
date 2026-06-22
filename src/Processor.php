@@ -2,29 +2,21 @@
 
 namespace alcamo\scan;
 
-use alcamo\cli\Logger;
-use alcamo\exception\{DataValidationFailed, ProcessFailed};
+use alcamo\cli\{LoggableTrait, Logger};
+use alcamo\exception\DataValidationFailed;
 use alcamo\rdf_literal\DateLiteral;
 use alcamo\rdfa\RdfaData;
 
 class Processor
 {
+    use LoggableTrait;
+
     public const BASENAME_PROPS = [
         'dc:publisher',
         'dc:date',
         'dc:audience',
         'dc:title',
         'dc:coverage'
-    ];
-
-    protected const EXIFTOOL_MAP = [
-        'dc:coverage'  => 'Coverage',
-        'dc:creator'   => 'Creator',
-        'dc:date'      => 'Date',
-        'dc:language'  => 'Language',
-        'dc:publisher' => 'Publisher',
-        'dc:title'     => 'Title',
-        'dc:type'      => 'Type'
     ];
 
     private const BACKGROUND = '#00000000';
@@ -52,7 +44,7 @@ class Processor
         ?int $batchStart,
         bool $createPdf
     ) {
-        $this->logger_ = $logger;
+        $this->setLogger($logger);
 
         $this->fixedRdfaData_ = $fixedRdfaData;
 
@@ -175,6 +167,8 @@ class Processor
 
     private function processBatch(RdfaData $rdfaData, array $filenames): void
     {
+        $exiftool = new Exiftool($this->getLogger());
+
         if ($this->createPdf_) {
             $tmpname0 = tempnam(getcwd(), 'scan.process.');
 
@@ -194,7 +188,7 @@ class Processor
                 throw new \RuntimeException('Imagick failed to create PDF');
             }
 
-            $this->runExiftool(
+            $exiftool->applyRdfaData(
                 $rdfaData,
                 $tmpname,
                 $this->createBasename($rdfaData) . '.pdf'
@@ -227,47 +221,13 @@ class Processor
 
                     $image->writeImage($tmpname);
 
-                    $this->runExiftool($rdfaData, $tmpname, $filename);
+                    $exiftool->applyRdfaData($rdfaData, $tmpname, $filename);
 
                     unlink($tmpname);
                 } else {
-                    $this->runExiftool($rdfaData, $filenames[$i], $filename);
+                    $exiftool->applyRdfaData($rdfaData, $filenames[$i], $filename);
                 }
             }
-        }
-    }
-
-    private function runExiftool(
-        RdfaData $rdfaData,
-        string $infilename,
-        string $outfilename
-    ): void {
-        $this->logger_->notice("Writing $outfilename ...");
-
-        $cmdLine = 'exiftool '
-            . "-o $outfilename "
-            . '-HostComputer=' . getenv('HOSTNAME') . ' ';
-
-        foreach (static::EXIFTOOL_MAP as $curie => $prop) {
-            if (isset($rdfaData[$curie])) {
-                $cmdLine .= "-$prop='{$rdfaData[$curie]->first()}' ";
-            }
-        }
-
-        $cmdLine .= $infilename;
-
-        $this->logger_->info($cmdLine);
-
-        if (passthru($cmdLine, $exitCode) === false) {
-            throw (new ProcessFailed())->setMessageContext(
-                [ 'command' => $cmdLine ]
-            );
-        }
-
-        if ($exitCode) {
-            throw (new ProcessFailed())->setMessageContext(
-                [ 'command' => $cmdLine ]
-            );
         }
     }
 }
