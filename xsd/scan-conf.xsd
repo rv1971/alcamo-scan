@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <xsd:schema
-    xmlns="https://github.com/rv1971/alcamo-scan/conf"
+    xmlns="https://github.com/rv1971/alcamo-scan/conf/"
     xmlns:dc="http://purl.org/dc/terms/"
     xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-    xmlns:c="https://github.com/rv1971/alcamo-scan/conf"
-    targetNamespace="https://github.com/rv1971/alcamo-scan/conf"
+    xmlns:c="https://github.com/rv1971/alcamo-scan/conf/"
+    targetNamespace="https://github.com/rv1971/alcamo-scan/conf/"
     elementFormDefault="qualified"
     dc:title="Scan configuration"
     dc:creator="RV1971 &lt;rv1971@web.de&gt;"

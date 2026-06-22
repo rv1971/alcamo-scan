@@ -8,6 +8,7 @@ use alcamo\dom\DocumentValidator;
 use alcamo\dom\schema\FixedSchemaSimpleTypeValidator;
 use alcamo\exception\WriteError;
 use alcamo\rdfa\RdfaData;
+use alcamo\uri\FileUriFactory;
 use GetOpt\{ArgumentException, GetOpt, Operand};
 
 class ScanCli extends AbstractCli
@@ -167,10 +168,15 @@ EOT;
 
     public const CONF_FILENAME = 'scan-conf.xml';
 
-    protected const EXAMPLE_CONF_FILENAME =
+    protected const EXAMPLE_CONF_PATHNAME =
         __DIR__ . DIRECTORY_SEPARATOR . '..'
         . DIRECTORY_SEPARATOR . 'conf'
         . DIRECTORY_SEPARATOR . 'example-conf.xml';
+
+    protected const XSD_PATHNAME =
+        __DIR__ . DIRECTORY_SEPARATOR . '..'
+        . DIRECTORY_SEPARATOR . 'xsd'
+        . DIRECTORY_SEPARATOR . 'scan-conf.xsd';
 
     protected const CONF_OPTIONS = [
         'language'   => 'dc:language',
@@ -194,27 +200,20 @@ EOT;
     {
         parent::process($arguments);
 
-        $loader = new Loader(null, new XmlFileParser());
+        $this->conf_ = (new Loader(null, new XmlFileParser()))
+            ->createIfNotExistsAndLoad(
+                static::CONF_FILENAME,
+                str_replace(
+                    ConfDocument::MAIN_NS . 'scan-conf.xsd',
+                    (new FileUriFactory())->create(static::XSD_PATHNAME),
+                    file_get_contents(static::EXAMPLE_CONF_PATHNAME)
+                ),
+                $pathname
+            );
 
-        /** If there is no configuration file, copy the bundled example file
-         *  to the configuration home directory. */
-        if (!$loader->getFileFinder()->find(static::CONF_FILENAME)) {
-            $path = $loader->getFileFinder()->getDefaultDir()
-                . DIRECTORY_SEPARATOR . static::CONF_FILENAME;
-
-            if (!copy(static::EXAMPLE_CONF_FILENAME, $path)) {
-                throw (new WriteError())->setMessageContext(
-                    [
-                        'operation' =>
-                        "copy " . static::EXAMPLE_CONF_FILENAME . " to $path"
-                    ]
-                );
-            }
-
-            $this->getLogger()->notice("Created $path");
+        if (isset($pathname)) {
+            $this->getLogger()->notice("Created $pathname");
         }
-
-        $this->conf_ = $loader->load(static::CONF_FILENAME);
 
         $this->conf_->chooseDevice(
             $this->getOption('device') ?? getenv('SANE_DEFAULT_DEVICE')

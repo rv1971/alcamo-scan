@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 
 <conf
-    xmlns="https://github.com/rv1971/alcamo-scan/conf"
+    xmlns="https://github.com/rv1971/alcamo-scan/conf/"
     xmlns:dc="http://purl.org/dc/terms/"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="https://github.com/rv1971/alcamo-scan/conf file:///home/rizzardo/src/alcamo-scan/xsd/scan-conf.xsd">
+    xsi:schemaLocation="https://github.com/rv1971/alcamo-scan/conf/ https://github.com/rv1971/alcamo-scan/conf/scan-conf.xsd">
   <geometries>
     <geometry id="a4">210x297</geometry>
     <geometry id="a5">148x210</geometry>
@@ -23,6 +23,8 @@
       format="jpeg"
       mode="color"
       resolution="150"/>
+
+  <!-- example devices -->
 
   <device
       xsi:type="NetDevice"

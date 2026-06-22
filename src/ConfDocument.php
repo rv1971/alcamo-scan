@@ -7,7 +7,7 @@ use alcamo\exception\{DataNotFound, ProcessFailed};
 
 class ConfDocument extends Document
 {
-    public const MAIN_NS = 'https://github.com/rv1971/alcamo-scan/conf';
+    public const MAIN_NS = 'https://github.com/rv1971/alcamo-scan/conf/';
 
     public const TYPE_CONVERTER_MAP =
         [
