@@ -3,7 +3,7 @@
 namespace alcamo\scan;
 
 use alcamo\cli\{AbstractCli, Logger};
-use alcamo\conf\Loader;
+use alcamo\xml_conf\{Loader, XmlFileParser};
 use alcamo\dom\DocumentValidator;
 use alcamo\dom\schema\FixedSchemaSimpleTypeValidator;
 use alcamo\exception\WriteError;
@@ -200,7 +200,8 @@ EOT;
     {
         parent::process($arguments);
 
-        $this->conf_ = (new Loader(null, new XmlFileParser()))
+        $this->conf_ =
+            (new Loader(null, new XmlFileParser(ConfDocument::class)))
             ->createIfNotExistsAndLoad(
                 static::CONF_FILENAME,
                 str_replace(

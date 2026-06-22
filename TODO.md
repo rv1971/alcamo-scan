@@ -1,7 +1,13 @@
-# alcamo-scan
+* create alcamo-xml-conf
+  * XmlFileParser
+  * loader
+    * using an XmlFileParser by default
+    * able to replace schema location in an example XML file, perhap
+      with dom means, than it could also insert dc:created
+* create and test separate class to Exiftool with a run() method
 
-*  validate dates, page number and page number increment using a FixedSchemaSimpleTypeValidator
-   * split dates at comma and validate as list of dates
+
+# alcamo-scan
 
 * add config option scan-format
   * set to format by default if not specified

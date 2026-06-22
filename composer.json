@@ -6,8 +6,7 @@
     "require": {
         "php": "7.3 - 8.5",
         "alcamo/cli": "^0.6",
-        "alcamo/conf": "^0.6",
-        "alcamo/dom": "^0.17"
+        "alcamo/xml-conf": "dev-master@dev"
     },
     "autoload": {
 	"psr-4": {
