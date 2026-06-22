@@ -154,8 +154,6 @@ class ConfDocument extends AbstractConfDocument
     {
         parent::afterLoad();
 
-        $this->getXPath()->registerNamespace('c', self::MAIN_NS);
-
         $this->defaults_ = $this->query('/*/c:defaults')[0];
     }
 }

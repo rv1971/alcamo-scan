@@ -262,6 +262,7 @@
       </xsd:sequence>
 
       <xsd:attribute ref="dc:created" use="required"/>
+      <xsd:attribute ref="dc:modified"/>
     </xsd:complexType>
 
     <xsd:unique name="device-id">
