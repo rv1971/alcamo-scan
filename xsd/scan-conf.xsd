@@ -10,7 +10,7 @@
     dc:title="Scan configuration"
     dc:creator="rv1971 &lt;rv1971@web.de&gt;"
     dc:created="2026-01-05"
-    dc:modified="2026-06-22"
+    dc:modified="2026-06-23"
     xml:lang="en">
   <xsd:import
       namespace="http://purl.org/dc/terms/"
@@ -104,7 +104,7 @@
     </xsd:documentation>
   </xsd:annotation>
 
-  <xsd:complexType name="AbstractSettings">
+  <xsd:complexType name="AbstractSettings" abstract="true">
     <xsd:attribute ref="dc:language"/>
     <xsd:attribute ref="dc:type"/>
 
@@ -211,6 +211,13 @@
   <xsd:element name="conf">
     <xsd:complexType>
       <xsd:sequence>
+        <xsd:element name="pathnames">
+          <xsd:complexType>
+            <xsd:attribute name="exiftool" type="xsd:string" use="required"/>
+            <xsd:attribute name="scanimage" type="xsd:string" use="required"/>
+          </xsd:complexType>
+        </xsd:element>
+
         <xsd:element name="geometries">
           <xsd:complexType>
             <xsd:sequence>

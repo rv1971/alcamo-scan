@@ -31,7 +31,7 @@ class Exiftool
 
     public function __construct(
         ?Logger $logger = null,
-            ?string $exiftool = null
+        ?string $exiftool = null
     ) {
         $this->setLogger($logger);
         $this->exiftool_ = $exiftool ?? static::EXIFTOOL;

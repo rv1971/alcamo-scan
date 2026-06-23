@@ -3,7 +3,12 @@
 <conf
     xmlns="https://github.com/rv1971/alcamo-scan/conf/"
     xmlns:dc="http://purl.org/dc/terms/"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    dc:created="2026-01-06">
+  <pathnames
+      exiftool="/usr/bin/exiftool"
+      scanimage="/usr/bin/scanimage"/>
+
   <geometries>
     <geometry id="a4">210x297</geometry>
     <geometry id="a5">148x210</geometry>

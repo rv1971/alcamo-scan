@@ -101,9 +101,17 @@ class ConfDocument extends AbstractConfDocument
                 $geometryId = $this->device_->$optionName
                     ?? $this->defaults_->$optionName;
 
+                $elem = $this->query(
+                    "/*/c:geometries/c:geometry[@id = '$geometryId']"
+                )[0];
+
                 return $this->query(
                     "/*/c:geometries/c:geometry[@id = '$geometryId']"
                 )[0];
+
+            case 'exiftool':
+            case 'scanimage':
+                return $this->query('/*/c:pathnames')[0]->$optionName;
 
             default:
                 return $this->device_->$optionName

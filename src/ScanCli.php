@@ -218,9 +218,9 @@ EOT;
 
         /* Add defaults to option descriptions for help text. */
         foreach (static::CONF_OPTIONS as $cmdLineOption => $option) {
-            $getOptOption = $this->getOptionObject($cmdLineOption);
-
             if (isset($this->conf_->$option)) {
+                $getOptOption = $this->getOptionObject($cmdLineOption);
+
                 $getOptOption->setDescription(
                     $getOptOption->getDescription()
                     . " [{$this->conf_->$option}]"
@@ -366,16 +366,12 @@ EOT;
             : 'scan.' . date('Ydm\THis');
 
         if (!$this->getOption('process-only')) {
-            $scanner = new Scanner(
-                $this->conf_,
-                $this->getLogger(),
+            (new Scanner($this->conf_, $this->getLogger()))->run(
+                $filenamePrefix,
                 $batchStart,
                 $batchIncrement,
-                $filenamePrefix,
                 $totalPageCount
             );
-
-            $scanner->run();
         }
 
         if (!$scanOnly) {

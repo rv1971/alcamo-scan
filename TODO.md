@@ -1,8 +1,6 @@
-* create alcamo-xml-conf
-* create and test separate class to Exiftool with a run() method
-
-
 # alcamo-scan
+
+* pass exiftool option via processor to Exiftool
 
 * add config option scan-format
   * set to format by default if not specified
