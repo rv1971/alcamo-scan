@@ -369,9 +369,9 @@ EOT;
         if (!$this->getOption('process-only')) {
             (new Scanner($this->conf_, $this->getLogger()))->run(
                 $filenamePrefix,
+                $totalPageCount,
                 $batchStart,
-                $batchIncrement,
-                $totalPageCount
+                $batchIncrement
             );
         }
 
@@ -414,18 +414,18 @@ EOT;
                         [ 'dc:type',      $this->conf_->{'dc:type'} ]
                     ]
                 ),
+                $filenames,
+                $this->getOption('rotate') ? 90 : null,
+                $createPdf,
+            );
+
+            $processor->run(
                 $dates,
                 $titles,
                 $coverages,
                 $batchSize,
-                $filenames,
-                $this->getOption('rotate') ? 90 : null,
-                $batchStart,
-                $createPdf,
+                $batchStart
             );
-
-            $processor->run();
-
 
             if (!$this->getOption('no-remove-raw-files')) {
                 foreach ($filenames as $filename) {

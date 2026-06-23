@@ -2,6 +2,8 @@
 
 * pass exiftool option via processor to Exiftool
 
+* review and test Processor and ScanCli
+
 * add config option scan-format
   * set to format by default if not specified
   * if differs from format, add coinversion step to processor

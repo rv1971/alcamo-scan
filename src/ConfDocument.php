@@ -55,7 +55,12 @@ class ConfDocument extends AbstractConfDocument
 
                 $this->device_->setAttribute(
                     'name',
-                    "{$this->device_->backend}:libusb:{$usbDevice->getBus()}:{$usbDevice->getDevice()}"
+                    sprintf(
+                        '%s:libusb:%03d:%03d',
+                        $this->device_->backend,
+                        $usbDevice->getBus(),
+                        $usbDevice->getDevice()
+                    )
                 );
             }
         }

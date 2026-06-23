@@ -23,53 +23,39 @@ class Processor
 
     private $logger_;           ///< Logger
     private $fixedRdfaData_;    ///< RdfaData
-    private $dates_;            ///< array
-    private $titles_;           ///< array
-    private $coverages_;        ///< array
-    private $batchSize_;        ///< array
     private $filenames_;        ///< array
     private $rotateDegrees_;    ///< ?int
-    private $batchStart_;       ///< ?int
     private $createPdf_;        ///< bool
 
     public function __construct(
         Logger $logger,
         RdfaData $fixedRdfaData,
-        array $dates,
-        array $titles,
-        array $coverages,
-        ?int $batchSize,
         array $filenames,
         ?int $rotateDegrees,
-        ?int $batchStart,
         bool $createPdf
     ) {
         $this->setLogger($logger);
 
         $this->fixedRdfaData_ = $fixedRdfaData;
 
-        $this->dates_ = $dates;
-
-        $this->titles_ = $titles;
-
-        $this->coverages_ = $coverages;
-
-        $this->batchSize_ = $batchSize;
-
         $this->filenames_ = $filenames;
 
         $this->rotateDegrees_ = $rotateDegrees;
 
-        $this->batchStart_ = $batchStart;
-
         $this->createPdf_ = $createPdf;
+    }
 
-        if (isset($this->batchSize_)) {
-            $requiredFileCount =  max(
-                count($this->dates_),
-                count($this->titles_),
-                count($this->coverages_)
-            ) * $this->batchSize_;
+    public function run(
+        array $dates,
+        array $titles,
+        array $coverages,
+        ?int $batchSize,
+        ?int $batchStart
+    ): void {
+        if (isset($batchSize)) {
+            $requiredFileCount =
+                max(count($dates), count($titles), count($coverages))
+                * $batchSize;
 
             if ($requiredFileCount != count($this->filenames_)) {
                 throw (new DataValidationFailed())->setMessageContext(
@@ -80,38 +66,38 @@ class Processor
                     ]
                 );
             }
-        }
-    }
 
-    public function run(): void
-    {
-        if (isset($this->batchSize_)) {
-            $this->runCombineMode();
+            $this->runCombineMode($dates, $titles, $coverages, $batchSize, $batchStart);
         } else {
-            $this->runSingleDocumentMode();
+            $this->runSingleDocumentMode($dates[0], $titles[0], $coverages[0]);
         }
     }
 
-    protected function runCombineMode(): void
-    {
-        $fileNo = $this->batchStart_;
+    protected function runCombineMode(
+        array $dates,
+        array $titles,
+        array $coverages,
+        ?int $batchSize,
+        ?int $batchStart
+    ): void {
+        $fileNo = $batchStart;
 
         $listSize = max(
-            count($this->dates_),
-            count($this->titles_),
-            count($this->coverages_)
+            count($dates),
+            count($titles),
+            count($coverages)
         );
 
-        if (count($this->dates_) == 1) {
-            $this->dates_ = array_fill(0, $listSize, $this->dates_[0]);
+        if (count($dates) == 1) {
+            $dates = array_fill(0, $listSize, $dates[0]);
         }
 
-        if (count($this->titles_) == 1) {
-            $this->titles_ = array_fill(0, $listSize, $this->titles_[0]);
+        if (count($titles) == 1) {
+            $titles = array_fill(0, $listSize, $titles[0]);
         }
 
-        if (count($this->coverages_) == 1) {
-            $this->coverages_ = array_fill(0, $listSize, $this->coverages_[0]);
+        if (count($coverages) == 1) {
+            $coverages = array_fill(0, $listSize, $coverages[0]);
         }
 
         for ($i = 0; $i < $listSize; $i++) {
@@ -119,32 +105,35 @@ class Processor
                 $this->fixedRdfaData_->replace(
                     RdfaData::newFromIterable(
                         [
-                            [ 'dc:coverage', $this->coverages_[$i] ],
-                            [ 'dc:date', new DateLiteral($this->dates_[$i]) ],
-                            [ 'dc:title', $this->titles_[$i] ]
+                            [ 'dc:coverage', $coverages[$i] ],
+                            [ 'dc:date', new DateLiteral($dates[$i]) ],
+                            [ 'dc:title', $titles[$i] ]
                         ]
                     )
                 ),
                 array_slice(
                     $this->filenames_,
                     $fileNo,
-                    $this->batchSize_
+                    $batchSize
                 )
             );
 
-            $fileNo += $this->batchSize_;
+            $fileNo += $batchSize;
         }
     }
 
-    protected function runSingleDocumentMode(): void
-    {
+    protected function runSingleDocumentMode(
+        string $date,
+        string $title,
+        string $coverage
+    ): void {
         $this->processBatch(
             $this->fixedRdfaData_->replace(
                 RdfaData::newFromIterable(
                     [
-                        [ 'dc:coverage', $this->coverages_[0] ],
-                        [ 'dc:date', new DateLiteral($this->dates_[0]) ],
-                        [ 'dc:title', $this->titles_[0] ]
+                        [ 'dc:coverage', $coverage ],
+                        [ 'dc:date', $date ],
+                        [ 'dc:title', $title ]
                     ]
                 )
             ),
@@ -167,7 +156,7 @@ class Processor
 
     private function processBatch(RdfaData $rdfaData, array $filenames): void
     {
-        $exiftool = new Exiftool($this->getLogger());
+        $exiftool = new Exiftool($this->logger_);
 
         if ($this->createPdf_) {
             $tmpname0 = tempnam(getcwd(), 'scan.process.');

@@ -6,6 +6,7 @@ use alcamo\dom\DocumentValidator;
 use alcamo\xml_conf\Loader;
 use PHPUnit\Framework\TestCase;
 
+/* This also tests ConfDocument. */
 class ScannerTest extends TestCase
 {
     /**
