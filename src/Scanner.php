@@ -9,6 +9,7 @@ class Scanner
 {
     use LoggableTrait;
 
+    /// Pathname of scanimage binary
     public const SCANIMAGE = '/usr/bin/scanimage';
 
     private $conf_;      ///< ConfDocument

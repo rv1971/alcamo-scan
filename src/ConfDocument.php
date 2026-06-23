@@ -2,8 +2,9 @@
 
 namespace alcamo\scan;
 
+use alcamo\cli\Logger;
 use alcamo\xml_conf\AbstractConfDocument;
-use alcamo\exception\{DataNotFound, ProcessFailed};
+use alcamo\exception\DataNotFound;
 
 class ConfDocument extends AbstractConfDocument
 {
@@ -15,8 +16,6 @@ class ConfDocument extends AbstractConfDocument
             => __CLASS__ . '::createGeometryFromString'
         ]
         + parent::TYPE_CONVERTER_MAP;
-
-    private const LSUSB_CMD = '/usr/bin/lsusb';
 
     /// Convert a geometry string to a 2- or 4-element array
     public static function createGeometryFromString(string $value): \stdClass
@@ -33,7 +32,7 @@ class ConfDocument extends AbstractConfDocument
     private $device_;  ///< Element
 
     /// Choose a configured device by ID or name
-    public function chooseDevice(string $deviceId): void
+    public function chooseDevice(string $deviceId, ?Logger $logger = null): void
     {
         if ($deviceId) {
             /** Look for a device with the specified ID or name, if given. */
@@ -43,31 +42,20 @@ class ConfDocument extends AbstractConfDocument
         } else {
             /** If no device ID is given, look for a USB device at
              *  `/dev/scanner`. */
-            $devicePath = readlink('/dev/scanner');
+            $usbDevice = UsbDevice::newFromPathname(
+                '/dev/scanner',
+                $logger,
+                $this->lsusb
+            );
 
-            if ($devicePath !== false) {
-                $a = explode('/', $devicePath);
-                $usbDevice = array_pop($a);
-                $usbBus = array_pop($a);
-
-                $cmdLine = self::LSUSB_CMD . " -s $usbBus:$usbDevice";
-
-                $lsusbOutput = exec($cmdLine, $output, $resultCode);
-
-                if ($resultCode) {
-                    throw (new ProcessFailed())->setMessageContext(
-                        [ 'command' => $cmdLine ]
-                    );
-                }
-
-                $usbId = explode(' ', $lsusbOutput)[5];
-
-                $this->device_ =
-                    $this->query("/*/c:device[@usbId = '$usbId']")[0];
+            if (isset($usbDevice)) {
+                $this->device_ = $this->query(
+                    "/*/c:device[@usbId = '{$usbDevice->getId()}']"
+                )[0];
 
                 $this->device_->setAttribute(
                     'name',
-                    "{$this->device_->backend}:libusb:$usbBus:$usbDevice"
+                    "{$this->device_->backend}:libusb:{$usbDevice->getBus()}:{$usbDevice->getDevice()}"
                 );
             }
         }
@@ -77,7 +65,7 @@ class ConfDocument extends AbstractConfDocument
                 [ 'extraMessage' => "scanner $deviceId not configured" ]
             );
         }
-   }
+    }
 
     public function __isset(string $optionName): bool
     {
@@ -110,6 +98,7 @@ class ConfDocument extends AbstractConfDocument
                 )[0];
 
             case 'exiftool':
+            case 'lsusb':
             case 'scanimage':
                 return $this->query('/*/c:pathnames')[0]->$optionName;
 

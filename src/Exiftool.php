@@ -9,6 +9,8 @@ use alcamo\rdfa\{AbstractRdfaData, ImmutableRdfaData};
 /**
  * @brief Wrapper for the `exiftool` program
  *
+ * @invariant Immutable class.
+ *
  * @date Last reviewed 2026-06-22
  */
 class Exiftool
@@ -25,10 +27,16 @@ class Exiftool
         'dc:type'      => 'Type'
     ];
 
+    /// Pathname of exiftool binary
     public const EXIFTOOL = '/usr/bin/exiftool';
 
-    private $exiftool_; /// pathname of exiftool binary
+    private $exiftool_; ///< Pathname of exiftool binary
 
+    /**
+     * @param $logger Logger object.
+     *
+     * @param $exiftool Pathname of the `exiftool` binary.
+     */
     public function __construct(
         ?Logger $logger = null,
         ?string $exiftool = null

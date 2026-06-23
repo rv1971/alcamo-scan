@@ -214,6 +214,7 @@
         <xsd:element name="pathnames">
           <xsd:complexType>
             <xsd:attribute name="exiftool" type="xsd:string" use="required"/>
+            <xsd:attribute name="lsusb" type="xsd:string" use="required"/>
             <xsd:attribute name="scanimage" type="xsd:string" use="required"/>
           </xsd:complexType>
         </xsd:element>

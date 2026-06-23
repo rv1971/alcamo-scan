@@ -213,7 +213,8 @@ EOT;
         }
 
         $this->conf_->chooseDevice(
-            $this->getOption('device') ?? getenv('SANE_DEFAULT_DEVICE')
+            $this->getOption('device') ?? getenv('SANE_DEFAULT_DEVICE'),
+            $this->getLogger()
         );
 
         /* Add defaults to option descriptions for help text. */
