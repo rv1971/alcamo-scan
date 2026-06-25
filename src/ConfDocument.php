@@ -72,11 +72,6 @@ class ConfDocument extends AbstractConfDocument
         }
     }
 
-    public function __isset(string $optionName): bool
-    {
-        return $this->__get($optionName) !== null;
-    }
-
     public function __get(string $optionName)
     {
         switch ($optionName) {
