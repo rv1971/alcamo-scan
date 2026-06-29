@@ -3,10 +3,10 @@
 namespace alcamo\scan;
 
 use alcamo\cli\Logger;
-use alcamo\xml_conf\AbstractConfDocument;
+use alcamo\xml_conf\ConfDocument as BaseConfDocument;
 use alcamo\exception\DataNotFound;
 
-class ConfDocument extends AbstractConfDocument
+class ConfDocument extends BaseConfDocument
 {
     public const MAIN_NS = 'https://github.com/rv1971/alcamo-scan/conf/';
 
