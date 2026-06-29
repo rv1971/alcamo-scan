@@ -170,7 +170,7 @@ EOT;
 
     protected const EXAMPLE_CONF_PATHNAME =
         __DIR__ . DIRECTORY_SEPARATOR . '..'
-        . DIRECTORY_SEPARATOR . 'conf'
+        . DIRECTORY_SEPARATOR . 'etc'
         . DIRECTORY_SEPARATOR . 'example-conf.xml';
 
     protected const XSD_PATHNAME =
