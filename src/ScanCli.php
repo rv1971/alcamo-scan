@@ -8,7 +8,6 @@ use alcamo\dom\DocumentValidator;
 use alcamo\dom\schema\FixedSchemaSimpleTypeValidator;
 use alcamo\exception\WriteError;
 use alcamo\rdfa\RdfaData;
-use alcamo\uri\FileUriFactory;
 use GetOpt\{ArgumentException, GetOpt, Operand};
 
 class ScanCli extends AbstractCli

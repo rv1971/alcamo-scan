@@ -53,14 +53,11 @@ class ConfDocument extends BaseConfDocument
                     "/*/c:device[@usbId = '{$usbDevice->getId()}']"
                 )[0];
 
-                $this->device_->setAttribute(
-                    'name',
-                    sprintf(
-                        '%s:libusb:%03d:%03d',
-                        $this->device_->backend,
-                        $usbDevice->getBus(),
-                        $usbDevice->getDevice()
-                    )
+                $this->device_->name = sprintf(
+                    '%s:libusb:%03d:%03d',
+                    $this->device_->backend,
+                    $usbDevice->getBus(),
+                    $usbDevice->getDevice()
                 );
             }
         }
@@ -89,10 +86,6 @@ class ConfDocument extends BaseConfDocument
                 $geometryId = $this->device_->$optionName
                     ?? $this->defaults_->$optionName;
 
-                $elem = $this->query(
-                    "/*/c:geometries/c:geometry[@id = '$geometryId']"
-                )[0];
-
                 return $this->query(
                     "/*/c:geometries/c:geometry[@id = '$geometryId']"
                 )[0];
@@ -111,18 +104,13 @@ class ConfDocument extends BaseConfDocument
     public function __set($optionName, $value): void
     {
         switch (true) {
-            case substr($optionName, 0, 3) == 'dc:':
-                $this->device_
-                    ->setAttributeNS(self::DC_NS, $optionName, $value);
-                break;
-
             case $optionName == 'geometry':
                 $geometries = $this->query('/*/c:geometries')[0];
 
                 if (
                     isset($geometries->query("c:geometry[@id = '$value']")[0])
                 ) {
-                    $this->device_->setAttribute($optionName, $value);
+                    $this->device_->$optionName = $value;
                 } else {
                     /* If a non-predefined geometry is used, create an entry
                      * with id '_' for it. This implies that the geometry is
@@ -133,17 +121,17 @@ class ConfDocument extends BaseConfDocument
                         $value
                     );
 
-                    $geometry->setAttribute('id', '_');
+                    $geometry->id = '_';
 
                     $geometries->appendChild($geometry);
 
-                    $this->device_->setAttribute($optionName, '_');
+                    $this->device_->$optionName = '_';
                 }
 
                 break;
 
             default:
-                $this->device_->setAttribute($optionName, $value);
+                $this->device_->$optionName = $value;
         }
     }
 
