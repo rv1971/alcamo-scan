@@ -38,9 +38,9 @@
       source="adf"
       supportsXYResolution="true">
     <modes>
-      <mode id="binary">Binary</mode>
-      <mode id="color">Color</mode>
-      <mode id="gray">Gray</mode>
+      <mode id="binary" backendId="Binary"/>
+      <mode id="color"  backendId="Color"/>
+      <mode id="gray"   backendId="Gray"/>
     </modes>
 
     <sources>
@@ -55,9 +55,9 @@
       usbId="03f0:0a01"
       backend="genesys">
     <modes>
-      <mode id="binary">Lineart</mode>
-      <mode id="color">Color</mode>
-      <mode id="gray">Gray</mode>
+      <mode id="binary" backendId="Lineart"/>
+      <mode id="color"  backendId="Color"/>
+      <mode id="gray"   backendId="Gray"/>
     </modes>
   </device>
 </conf>

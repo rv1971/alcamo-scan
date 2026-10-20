@@ -10,7 +10,7 @@
     dc:title="Scan configuration"
     dc:creator="rv1971 &lt;rv1971@web.de&gt;"
     dc:created="2026-01-05"
-    dc:modified="2026-06-23"
+    dc:modified="2026-10-20"
     xml:lang="en">
   <xsd:import
       namespace="http://purl.org/dc/terms/"
@@ -132,11 +132,11 @@
               <xsd:sequence>
                 <xsd:element name="mode" maxOccurs="unbounded">
                   <xsd:complexType>
-                    <xsd:simpleContent>
-                      <xsd:extension base="Id">
-                        <xsd:attribute name="id" type="Mode" use="required"/>
-                      </xsd:extension>
-                    </xsd:simpleContent>
+                    <xsd:attribute name="id" type="Mode" use="required"/>
+                    <xsd:attribute
+                        name="backendId"
+                        type="xsd:token"
+                        use="required"/>
                   </xsd:complexType>
                 </xsd:element>
               </xsd:sequence>
