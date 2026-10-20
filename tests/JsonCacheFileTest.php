@@ -20,66 +20,66 @@ class JsonCacheFileTest extends TestCase
             unlink($expectedPathname);
         }
 
-       putenv('XDG_CACHE_HOME=' . __DIR__ . DIRECTORY_SEPARATOR . 'cache');
-       putenv('XDG_RUNTIME_DIR=' . __DIR__ . DIRECTORY_SEPARATOR . 'runtime');
+        putenv('XDG_CACHE_HOME=' . __DIR__ . DIRECTORY_SEPARATOR . 'cache');
+        putenv('XDG_RUNTIME_DIR=' . __DIR__ . DIRECTORY_SEPARATOR . 'runtime');
 
-       $jsonCacheFile = new JsonCacheFile($fileBaseName, $cacheType, $subdir);
+        $jsonCacheFile = new JsonCacheFile($fileBaseName, $cacheType, $subdir);
 
-       $this->assertSame(
-           $expectedPathname,
-           $jsonCacheFile->getPathname()
-       );
+        $this->assertSame(
+            $expectedPathname,
+            $jsonCacheFile->getPathname()
+        );
 
-       $this->assertSame(0, count($jsonCacheFile));
+        $this->assertSame(0, count($jsonCacheFile));
 
-       $this->assertFalse(isset($jsonCacheFile['foo']));
+        $this->assertFalse(isset($jsonCacheFile['foo']));
 
-       $jsonCacheFile['foo'] = 'FOO';
-       $jsonCacheFile['bar'] = [ 'BAR' ];
+        $jsonCacheFile['foo'] = 'FOO';
+        $jsonCacheFile['bar'] = [ 'BAR' ];
 
-       $jsonCacheFile = null;
+        $jsonCacheFile = null;
 
-       $jsonCacheFile = new JsonCacheFile($fileBaseName, $cacheType, $subdir);
+        $jsonCacheFile = new JsonCacheFile($fileBaseName, $cacheType, $subdir);
 
-       $this->assertSame(2, count($jsonCacheFile));
+        $this->assertSame(2, count($jsonCacheFile));
 
-       $this->assertTrue(isset($jsonCacheFile['foo']));
+        $this->assertTrue(isset($jsonCacheFile['foo']));
 
-       $this->assertSame($jsonCacheFile['foo'], 'FOO');
-       $this->assertSame($jsonCacheFile['bar'], [ 'BAR' ]);
+        $this->assertSame($jsonCacheFile['foo'], 'FOO');
+        $this->assertSame($jsonCacheFile['bar'], [ 'BAR' ]);
 
-       $expectedData = [ [ 'foo', 'FOO' ], [ 'bar', [ 'BAR' ] ] ];
+        $expectedData = [ [ 'foo', 'FOO' ], [ 'bar', [ 'BAR' ] ] ];
 
-       $i = 0;
+        $i = 0;
 
-       foreach ($jsonCacheFile as $key => $value) {
-           $this->assertSame($expectedData[$i][0], $key);
-           $this->assertSame($expectedData[$i++][1], $value);
-       }
+        foreach ($jsonCacheFile as $key => $value) {
+            $this->assertSame($expectedData[$i][0], $key);
+            $this->assertSame($expectedData[$i++][1], $value);
+        }
 
-       $this->assertSame(2, $i);
+        $this->assertSame(2, $i);
 
-       unset($jsonCacheFile['foo']);
+        unset($jsonCacheFile['foo']);
 
-       $jsonCacheFile = null;
+        $jsonCacheFile = null;
 
-       $jsonCacheFile = new JsonCacheFile($fileBaseName, $cacheType, $subdir);
+        $jsonCacheFile = new JsonCacheFile($fileBaseName, $cacheType, $subdir);
 
-       $this->assertFalse(isset($jsonCacheFile['foo']));
+        $this->assertFalse(isset($jsonCacheFile['foo']));
 
-       $this->assertTrue(isset($jsonCacheFile['bar']));
+        $this->assertTrue(isset($jsonCacheFile['bar']));
 
-       $jsonCacheFile->truncate();
+        $jsonCacheFile->truncate();
 
-       $jsonCacheFile = null;
+        $jsonCacheFile = null;
 
-       $jsonCacheFile = new JsonCacheFile($fileBaseName, $cacheType, $subdir);
+        $jsonCacheFile = new JsonCacheFile($fileBaseName, $cacheType, $subdir);
 
-       $this->assertEquals((object)[], $jsonCacheFile->getData());
+        $this->assertEquals((object)[], $jsonCacheFile->getData());
 
-       $jsonCacheFile = null;
+        $jsonCacheFile = null;
 
-       unlink($expectedPathname);
+        unlink($expectedPathname);
     }
 
     public function basicsProvider(): array

@@ -24,7 +24,9 @@ class ExiftoolTest extends TestCase
             [ 'dc:title', 'Logo' ],
             [ 'dc:type', 'Text' ],
             [ 'dc:identifier', 'alcamo-logo' ],
-            [ 'dc:publisher', 'Bob' ]
+            [ 'dc:publisher', 'Bob' ],
+            [ 'exif:XResolution', 2400 ],
+            [ 'exif:YResolution', 1200 ]
         ];
 
         $exiftool = new Exiftool();
@@ -48,13 +50,15 @@ class ExiftoolTest extends TestCase
         }
 
         $expectedExifData = [
-            'Coverage'  => 'alcamo-scan',
-            'Creator'   => 'Alice',
-            'Date'      => '2026:06:22 00:00:00+00:00',
-            'Language'  => 'it',
-            'Publisher' => 'Bob',
-            'Title'     => 'Logo',
-            'Type'      => 'Text'
+            'Coverage'    => 'alcamo-scan',
+            'Creator'     => 'Alice',
+            'Date'        => '2026:06:22 00:00:00+00:00',
+            'Language'    => 'it',
+            'Publisher'   => 'Bob',
+            'Title'       => 'Logo',
+            'Type'        => 'Text',
+            'X Resolution' => '2400',
+            'Y Resolution' => '1200'
         ];
 
         foreach ($expectedExifData as $key => $value) {

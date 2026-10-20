@@ -116,7 +116,8 @@ class JsonCacheFile implements \Countable, \ArrayAccess, \IteratorAggregate
                 $this->pathname_,
                 json_encode($this->data_, JSON_PRETTY_PRINT)
             )
-                === false) {
+                === false
+        ) {
             /** @throw alcamo::exception::WriteError if writing to the file
              *  fails. */
             throw (new WriteError())

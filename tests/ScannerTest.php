@@ -36,7 +36,7 @@ class ScannerTest extends TestCase
 
         (new DocumentValidator())->validate($conf);
 
-        $scanner = new Scanner($conf);
+        $scanner = new Scanner($conf, new FileDataCache());
 
         $this->assertSame(
             $expectedCmdLine,
@@ -66,6 +66,7 @@ class ScannerTest extends TestCase
                 . '--progress '
                 . "--source='Automatic Document Feeder' "
                 . '--buffer-size=64 '
+                . '-x 210 -y 297 '
                 . '--mode=Color '
                 . '--x-resolution=150 '
                 . '--y-resolution=150 '

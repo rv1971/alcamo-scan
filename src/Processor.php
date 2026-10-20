@@ -195,6 +195,17 @@ class Processor
             . ($fileCount > 1 ? '.%04.d' : '');
 
             for ($i = 0; $i < $fileCount; $i++) {
+                $fileData = $this->fileDataCache_[md5_file($filenames[$i])];
+
+                if (isset($fileData)) {
+                    $rdfaData->replace(
+                        [
+                            ['exif:XResolution', $fileData->resolution ],
+                            ['exif:YResolution', $fileData->resolution ]
+                        ]
+                    );
+                }
+
                 $suffix = strrchr($filenames[$i], '.');
                 $filename = sprintf($filenameFormat, $i + 1) . $suffix;
 

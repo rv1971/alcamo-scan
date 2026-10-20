@@ -18,13 +18,15 @@ class Exiftool
     use LoggableTrait;
 
     public const EXIFTOOL_MAP = [
-        'dc:coverage'  => 'Coverage',
-        'dc:creator'   => 'Creator',
-        'dc:date'      => 'Date',
-        'dc:language'  => 'Language',
-        'dc:publisher' => 'Publisher',
-        'dc:title'     => 'Title',
-        'dc:type'      => 'Type'
+        'dc:coverage'      => 'Coverage',
+        'dc:creator'       => 'Creator',
+        'dc:date'          => 'Date',
+        'dc:language'      => 'Language',
+        'dc:publisher'     => 'Publisher',
+        'dc:title'         => 'Title',
+        'dc:type'          => 'Type',
+        'exif:XResolution' => 'XResolution',
+        'exif:YResolution' => 'YResolution'
     ];
 
     /// Pathname of exiftool binary
