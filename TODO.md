@@ -1,11 +1,6 @@
 # alcamo-scan
 
-* NB: some backends (e.g. epkowa) do not write correct resolution into
-  exif data
-
 * move JsonCacheFile to alcamo-conf
-
-## other
 
 * pass exiftool option via processor to Exiftool
 

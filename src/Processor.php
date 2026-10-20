@@ -198,6 +198,9 @@ class Processor
                 $fileData = $this->fileDataCache_[md5_file($filenames[$i])];
 
                 if (isset($fileData)) {
+                    /* Some backends such as epkowa do ot write the correct
+                     * resolution into the image file, so this is corrected
+                     * here. */
                     $rdfaData->replace(
                         [
                             ['exif:XResolution', $fileData->resolution ],

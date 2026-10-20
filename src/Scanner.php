@@ -142,6 +142,8 @@ class Scanner
         foreach (
             glob("{$filenamePrefix}.????.{$this->conf_->format}") as $filename
         ) {
+            $data->filename = $filename;
+
             $this->fileDataCache_[md5_file($filename)] = $data;
         }
     }
