@@ -1,12 +1,19 @@
 # alcamo-scan
 
+* NB: some backends (e.g. epkowa) do not write correct resolution into
+  exif data
+
+* move JsonCacheFile to alcamo-conf
+
+## other
+
 * pass exiftool option via processor to Exiftool
 
 * review and test Processor and ScanCli
 
 * add config option scan-format
   * set to format by default if not specified
-  * if differs from format, add coinversion step to processor
+  * if differs from format, add conversion step to processor
   * add scan-format=png to plustek device settings
 * add specific functionality for Plustek to scan also infrared and remove dust
 

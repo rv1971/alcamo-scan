@@ -21,19 +21,23 @@ class Processor
 
     private const BACKGROUND = '#00000000';
 
-    private $logger_;           ///< Logger
-    private $fixedRdfaData_;    ///< RdfaData
-    private $filenames_;        ///< array
-    private $rotateDegrees_;    ///< ?int
-    private $createPdf_;        ///< bool
+    private $fileDataCache_; ///< FileDataCache
+    private $logger_;        ///< Logger
+    private $fixedRdfaData_; ///< RdfaData
+    private $filenames_;     ///< array
+    private $rotateDegrees_; ///< ?int
+    private $createPdf_;     ///< bool
 
     public function __construct(
+        FileDataCache $fileDataCache,
         Logger $logger,
         RdfaData $fixedRdfaData,
         array $filenames,
         ?int $rotateDegrees,
         bool $createPdf
     ) {
+        $this->fileDataCache_ = $fileDataCache;
+
         $this->setLogger($logger);
 
         $this->fixedRdfaData_ = $fixedRdfaData;

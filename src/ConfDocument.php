@@ -74,7 +74,7 @@ class ConfDocument extends BaseConfDocument
         switch ($optionName) {
             case 'backendMode':
                 return $this->device_->query(
-                    "c:modes/c:mode[@id = '{$this->mode}']/@backendId"
+                    "c:modes/c:mode[@id = '{$this->mode}']"
                 )[0];
 
             case 'backendSource':

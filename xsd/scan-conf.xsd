@@ -115,9 +115,22 @@
     <xsd:attribute name="resolution" type="xsd:unsignedShort"/>
   </xsd:complexType>
 
+  <xsd:complexType name="RequiredSettings">
+    <xsd:complexContent>
+      <xsd:restriction base="AbstractSettings">
+        <xsd:attribute name="geometry" type="Id" use="required"/>
+        <xsd:attribute name="mode" type="Mode" use="required"/>
+        <xsd:attribute
+            name="resolution"
+            type="xsd:unsignedShort"
+            use="required"/>
+      </xsd:restriction>
+    </xsd:complexContent>
+  </xsd:complexType>
+
   <xsd:complexType name="Settings">
     <xsd:complexContent>
-      <xsd:extension base="AbstractSettings">
+      <xsd:extension base="RequiredSettings">
         <xsd:attribute name="format" type="Format" use="required"/>
       </xsd:extension>
     </xsd:complexContent>
@@ -148,15 +161,15 @@
               <xsd:sequence>
                 <xsd:element name="source" maxOccurs="unbounded">
                   <xsd:complexType>
-                    <xsd:simpleContent>
-                      <xsd:extension base="xsd:string">
-                        <xsd:attribute name="id" type="Id" use="required"/>
-                        <xsd:attribute
-                            name="isAdf"
-                            type="xsd:boolean"
-                            default="false"/>
-                      </xsd:extension>
-                    </xsd:simpleContent>
+                    <xsd:attribute name="id" type="Id" use="required"/>
+                    <xsd:attribute
+                        name="backendId"
+                        type="xsd:token"
+                        use="required"/>
+                    <xsd:attribute
+                        name="isAdf"
+                        type="xsd:boolean"
+                        default="false"/>
                   </xsd:complexType>
                 </xsd:element>
               </xsd:sequence>

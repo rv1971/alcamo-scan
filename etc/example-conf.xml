@@ -26,6 +26,7 @@
       autopdf="true"
       bufferSize="64"
       format="jpeg"
+      geometry="a4"
       mode="color"
       resolution="150"/>
 
@@ -44,8 +45,8 @@
     </modes>
 
     <sources>
-      <source id="adf" isAdf="true">Automatic Document Feeder</source>
-      <source id="flatbed">Flatbed</source>
+      <source id="adf" backendId="Automatic Document Feeder" isAdf="true"/>
+      <source id="flatbed" backendId="Flatbed"/>
     </sources>
   </device>
 

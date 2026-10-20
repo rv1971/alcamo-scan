@@ -194,6 +194,7 @@ EOT;
     ];
 
     private $conf_; ///< ConfDocument
+    private $fileDataCache_; ///< FileDataCache
 
     public function process($arguments = null)
     {
@@ -210,6 +211,13 @@ EOT;
         if (isset($pathname)) {
             $this->getLogger()->notice("Created $pathname");
         }
+
+        $this->fileDataCache_ = new FileDataCache();
+
+        $this->getLogger()->debug(
+            "Caching scanned file data in "
+                . $this->fileDataCache_->getPathname()
+        );
 
         $this->conf_->chooseDevice(
             $this->getOption('device') ?? getenv('SANE_DEFAULT_DEVICE'),
@@ -366,7 +374,11 @@ EOT;
             : 'scan.' . date('Ydm\THis');
 
         if (!$this->getOption('process-only')) {
-            (new Scanner($this->conf_, $this->getLogger()))->run(
+            (new Scanner(
+                $this->conf_,
+                $this->fileDataCache_,
+                $this->getLogger()
+            ))->run(
                 $filenamePrefix,
                 $totalPageCount,
                 $batchStart,
@@ -403,6 +415,7 @@ EOT;
             }
 
             $processor = new Processor(
+                $this->fileDataCache_,
                 $this->getLogger(),
                 RdfaData::newFromIterable(
                     [

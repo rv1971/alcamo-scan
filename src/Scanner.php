@@ -12,14 +12,18 @@ class Scanner
     /// Pathname of scanimage binary
     public const SCANIMAGE = '/usr/bin/scanimage';
 
-    private $conf_;      ///< ConfDocument
-    private $scanimage_; ///< pathname of scanimage binary
+    private $conf_;          ///< ConfDocument
+    private $fileDataCache_; ///< FileDataCache
+    private $scanimage_;     ///< pathname of scanimage binary
 
     public function __construct(
         ConfDocument $conf,
+        FileDataCache $fileDataCache,
         ?Logger $logger = null
     ) {
         $this->conf_ = $conf;
+
+        $this->fileDataCache_ = $fileDataCache;
 
         $this->scanimage_ = $conf->scanimage ?? static::SCANIMAGE;
 
@@ -39,7 +43,7 @@ class Scanner
             . '--progress ';
 
         if (isset($this->conf_->backendSource)) {
-            $cmdLine .= "--source='{$this->conf_->backendSource}' ";
+            $cmdLine .= "--source='{$this->conf_->backendSource->backendId}' ";
             $isAdf = $this->conf_->backendSource->isAdf;
         } else {
             $isAdf = false;
@@ -60,7 +64,7 @@ class Scanner
         }
 
         if (isset($this->conf_->mode)) {
-            $cmdLine .= "--mode={$this->conf_->backendMode} ";
+            $cmdLine .= "--mode={$this->conf_->backendMode->backendId} ";
         }
 
         if (isset($this->conf_->resolution)) {
@@ -116,6 +120,29 @@ class Scanner
             throw (new ProcessFailed())->setMessageContext(
                 [ 'command' => $cmdLine ]
             );
+        }
+
+        $batchEnd = $batchStart + $totalPageCount * $batchIncrement;
+
+        $data = (object)[
+            'format' => (string)$this->conf_->format,
+            'deviceName' => $this->conf_->name,
+            'geometry' => $this->conf_->geometry->getValue(),
+            'mode' => (string)$this->conf_->mode,
+            'resolution' => $this->conf_->resolution
+        ];
+
+        if (isset($this->conf_->source)) {
+            $data->source = $this->conf_->source;
+            $data->isAdf = $this->conf_->backendSource->isAdf;
+        } else {
+            $data->isAdf = false;
+        }
+
+        foreach (
+            glob("{$filenamePrefix}.????.{$this->conf_->format}") as $filename
+        ) {
+            $this->fileDataCache_[md5_file($filename)] = $data;
         }
     }
 }
